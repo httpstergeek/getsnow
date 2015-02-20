@@ -1,3 +1,5 @@
+Copyright (C) 2006-2015 Zillow Group, Inc. All Rights Reserved.
+
 Get Service Now - A Splunk Search Command for Service Now
 =================
 
