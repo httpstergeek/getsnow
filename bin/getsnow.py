@@ -30,9 +30,9 @@ import requests
 
 def setup_logger(level):
     """
-        @param level: Logging level
-        @type level: logger object
-        @rtype: logger object
+        :param level: Logging level
+        :type level: logger object
+        :return : logger object
     """
     logger = logging.getLogger('snow')
     logger.propagate = False  # Prevent the log messages from being duplicated in the python.log file
