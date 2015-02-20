@@ -1,0 +1,33 @@
+[]
+access = read : [ * ], write : [ admin ]
+
+### EVENT TYPES
+
+[eventtypes]
+export = system
+
+
+### PROPS
+
+[props]
+export = system
+
+
+### TRANSFORMS
+
+[transforms]
+export = system
+
+
+### LOOKUPS
+
+[lookups]
+export = system
+
+### COMMANDS
+[commands]
+export = system
+
+### SEARCHBNF
+[searchbnf]
+export = system
