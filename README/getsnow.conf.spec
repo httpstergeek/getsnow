@@ -1,8 +1,8 @@
 # This file contains possible attributes and values you can use to configure getsnow,
 # sets connections string, user, name which is distributed to search heads.
 #
-# This is an carbonmine.conf in $SPLUNK_HOME/etc/getsnow/default.  To set custom configurations,
-# place an carbonmine.conf $SPLUNK_HOME/etc/getsnow/local.
+# This is an getsnow.conf in $SPLUNK_HOME/etc/getsnow/default.  To set custom configurations,
+# place an getsnow.conf $SPLUNK_HOME/etc/getsnow/local.
 
 # GLOBAL SETTINGS
 # Use the [global] stanza to define any global settings
