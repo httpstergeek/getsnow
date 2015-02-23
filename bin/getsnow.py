@@ -13,7 +13,8 @@ platform = system().lower()
 # Lazy load python eggs. Loading eggs into python execution path
 if platform == 'darwin':
     platform = 'macosx'
-egg_dir = os.path.dirname(os.path.realpath(__file__))
+running_dir = os.path.dirname(os.path.realpath(__file__))
+egg_dir = os.path.join(running_dir, 'eggs')
 for filename in os.listdir(egg_dir):
     file_segments = filename.split('-')
     if filename.endswith('.egg'):
@@ -34,10 +35,12 @@ def setup_logger(level):
         :type level: logger object
         :return : logger object
     """
-    logger = logging.getLogger('snow')
+    os.environ['SPLUNK_HOME']
+    logger = logging.getLogger('getsnow')
     logger.propagate = False  # Prevent the log messages from being duplicated in the python.log file
     logger.setLevel(level)
-    file_handler = logging.handlers.RotatingFileHandler(os.path.join('snow.log'), maxBytes=5000000,
+    file_handler = logging.handlers.RotatingFileHandler(os.path.join(os.environ['SPLUNK_HOME'], 'var', 'log', 'splunk', 'getsnow.log'),
+                                                        maxBytes=5000000,
                                                         backupCount=5)
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     file_handler.setFormatter(formatter)
@@ -199,8 +202,8 @@ class getSnowCommand(GeneratingCommand):
 
         try:
             # get config
-            conf = getstanza('snowpack', env)
-            proxy_conf = getstanza('snowpack', 'global')
+            conf = getstanza('getsnow', env)
+            proxy_conf = getstanza('getsnow', 'global')
             proxies = setproxy(conf, proxy_conf)
             user = conf['user']
             password = conf['password']
