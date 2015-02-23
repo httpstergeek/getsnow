@@ -217,7 +217,7 @@ class getSnowCommand(GeneratingCommand):
             records = snow_request.json()
         except Exception as e:
             logger.debug('getSnowCommand: %s' % e)
-            yield {'error': e}
+            yield {'error': e, '_raw': e}
             exit()
 
         if snow_request.status_code == 200:
