@@ -75,6 +75,7 @@ Example Command
 `| getsnow filters="active=true contact_type=phone" glideSystem="beginningOfLastWeek()"
     OR
 `| getsnow filters="active=true contact_type=phone" glideSystem="beginningOfLastWeek()" env=dev
+    Note: The value dev for env should match an stanza defined within getsnow.conf:wq
 
 Recommendations
 ---------
