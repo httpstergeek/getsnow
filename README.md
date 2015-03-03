@@ -46,7 +46,26 @@ Installation instructions
 
 2) create $SPLUNK_HOME/etc/apps/getsnow/local/getsnow.conf.
 
-3) configure [production] stanza with url to graphite instance. Note: if proxy look at README for proxy config.
+3) configure [production] stanza with url to Service Now instance. Note: if proxy look at README for proxy config.
+
+
+Note:   The Service Now user that is defined in each stanza requires read permission to incidents table at minimum.
+        If you plan on using the table argument you must also grant the user read permission to those tables.
+        consult with our ServiceNow Admin.
+
+Viewing Available Tables
+--------
+
+1) Login to service now.
+
+2) Browse *System Definition* Tab
+
+3) Click Tables & Columns
+
+4) Find the table of interest under the Tables Names section.
+   Note: items within brackets are the real name of the table.
+
+
 
 Example Command
 ---------
