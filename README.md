@@ -3,12 +3,21 @@ Copyright (C) 2006-2015 Zillow Group, Inc. All Rights Reserved.
 Get Service Now - A Splunk Search Command for Service Now
 =================
 
-Get Service now is a Splunk Search command that uses the snow api  and retrieves raw json data.
-This Splunk utilizes requests python modules.
+Getsnow is a Splunk Search command that uses the snow (sevicenow) api to retrieves raw json data. This app differs from
+the Splunk Add-on for Service Now by allow users to query any table, prebuilt or custom by using filters.  A filter is
+any top level key in the json event such as active, assigned_to, category, etc. Additionally this support multiple
+service now environments.  Multiple environments may include poc, dev, or prod can access by creating additional stanza
+and adding the argument 'env=<environment>'.
+
+This command additional allows the user to request data from any service now table by adding 'table=<string>' to there
+query. The default is set to incidence table.
+
+click here for [Service Now Table API documentation]
+
+[Service Now Table API documentation]:http://wiki.servicenow.com/index.php?title=Table_API
 
 ##Supports:
 * Supports multiple Service Now Instances
-
 * Proxy support
 
 
@@ -23,7 +32,7 @@ Requirements
 
 * App requires network access to Service Now instance
 
-* Miminum of 2 GB RAM and 1.8 GHz CPU.
+* Minimum of 2 GB RAM and 1.8 GHz CPU.
 
 
 
