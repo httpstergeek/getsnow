@@ -4,7 +4,7 @@ Get Service Now - A Splunk Search Command for Service Now
 =================
 
 Getsnow is a Splunk Search command that uses the snow (sevicenow) api to retrieves raw json data. This app differs from
-the Splunk Add-on for Service Now by allow users to query any table, prebuilt or custom by using filters.  A filter is
+the Splunk Add-on for Service Now by allow users to query any table, prebuilt or custom, by using filters.  A filter is
 any top level key in the json event such as active, assigned_to, category, etc. Additionally this support multiple
 service now environments.  Multiple environments may include poc, dev, or prod can access by creating additional stanza
 and adding the argument 'env=<environment>'.
