@@ -196,7 +196,7 @@ class getSnowCommand(GeneratingCommand):
             exit()
         time_range = '^opened_at>=javascript:gs.daysAgo(%s)' % self.daysAgo if self.daysAgo else ''
         time_range = '^opened_at>=javascript:gs.%s' % self.glideSystem if self.glideSystem else time_range
-        sysparam_query = '%s%s%s' % ('sysparm_query=', '^'.join(self.filters.split(' ')), time_range) if self.filters else 'sysparm_limit=1'
+        sysparam_query = '%s%s%s' % ('sysparm_query=', '^'.join(self.filters.split(',')), time_range) if self.filters else 'sysparm_limit=1'
         table = self.table if self.table else 'incident'
         env = self.env if self.env else 'production'
 
