@@ -41,7 +41,12 @@ def setup_logger(level):
     logger = logging.getLogger(appname)
     logger.propagate = False  # Prevent the log messages from being duplicated in the python.log file
     logger.setLevel(level)
-    file_handler = logging.handlers.RotatingFileHandler(os.path.join('{0}.log'.format(appname)), maxBytes=5000000,
+    file_handler = logging.handlers.RotatingFileHandler(os.path.join(os.environ['SPLUNK_HOME'],
+                                                                     'var',
+                                                                     'log',
+                                                                     'splunk',
+                                                                     '{0}.log'.format(appname)),
+                                                        maxBytes=5000000,
                                                         backupCount=5)
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     file_handler.setFormatter(formatter)
