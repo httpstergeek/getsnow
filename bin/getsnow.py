@@ -1,9 +1,6 @@
-<<<<<<< HEAD
-=======
 # encoding: utf-8
 # Author: Bernardo Macias <bmacias@httpstergeek.com>
 #
->>>>>>> master
 #
 # All rights reserved
 #
