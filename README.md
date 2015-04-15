@@ -10,16 +10,15 @@ service now environments.  Multiple environments may include poc, dev, or prod c
 and adding the argument 'env=<environment>'.
 
 This command additional allows the user to request data from any service now table by adding 'table=<string>' to there
+
 query. The default is set to incidence table.
 
 click here for [Service Now Table API documentation]
 
 [Service Now Table API documentation]:http://wiki.servicenow.com/index.php?title=Table_API
 
-Get Service Now - A Splunk Search Command for Service Now
-=================
-
 Get Service now is a Splunk Search command that uses the snow api  and retrieves raw json data.
+
 
 ##Supports:
 * Supports multiple Service Now Instances
@@ -37,7 +36,7 @@ Requirements
 
 * App requires network access to Service Now instance
 
-* Miminum of 2 GB RAM and 1.8 GHz CPU.
+* Minimum of 2 GB RAM and 1.8 GHz CPU.
 
 
 
@@ -60,7 +59,26 @@ Installation instructions
 
 2) create $SPLUNK_HOME/etc/apps/getsnow/local/getsnow.conf.
 
-3) configure [production] stanza with url to graphite instance. Note: if proxy look at README for proxy config.
+3) configure [production] stanza with url to Service Now instance. Note: if proxy look at README for proxy config.
+
+
+Note:   The Service Now user that is defined in each stanza requires read permission to incidents table at minimum.
+        If you plan on using the table argument you must also grant the user read permission to those tables.
+        consult with our ServiceNow Admin.
+
+Viewing Available Tables
+--------
+
+1) Login to service now.
+
+2) Browse *System Definition* Tab
+
+3) Click Tables & Columns
+
+4) Find the table of interest under the Tables Names section.
+   Note: items within brackets are the real name of the table.
+
+
 
 Example Command
 ---------
@@ -74,6 +92,7 @@ Example Command
     OR
 
 | getsnow filters="active=true,contact_type=phone,assigned_to=john smith" glideSystem="beginningOfLastWeek()" env=dev
+
 
 Recommendations
 ---------
