@@ -42,3 +42,6 @@ user = Service Now User
 password = Service Now user password
 * set password for Service Now user, optional.  Must define user.
 
+release = Service Now Release code
+* Sets release to Service Now release code.  Defaults to Eureka. Fuji
+

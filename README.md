@@ -4,13 +4,11 @@ Get Service Now - A Splunk Search Command for Service Now
 =================
 
 Get Service now is a Splunk Search command that uses the snow api  and retrieves raw json data.
-This Splunk utilizes requests python modules.
 
 ##Supports:
 * Supports multiple Service Now Instances
-
 * Proxy support
-
+* Supports Service Now Eureka and Fuji
 
 
 
@@ -51,11 +49,15 @@ Installation instructions
 Example Command
 ---------
 
-`| getsnow filters="active=true contact_type=phone" daysAgo=30
+| getsnow filters="active=true,contact_type=phone" daysAgo=30
+
     OR
-`| getsnow filters="active=true contact_type=phone" glideSystem="beginningOfLastWeek()"
+
+| getsnow filters="active=true,contact_type=phone" glideSystem="beginningOfLastWeek()"
+
     OR
-`| getsnow filters="active=true contact_type=phone" glideSystem="beginningOfLastWeek()" env=dev
+
+| getsnow filters="active=true,contact_type=phone,assigned_to=john smith" glideSystem="beginningOfLastWeek()" env=dev
 
 Recommendations
 ---------
