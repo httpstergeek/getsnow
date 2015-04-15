@@ -59,10 +59,10 @@ def setup_logger(level):
 
 def getstanza(conf, stanza):
     """
-    Returns dict object of config file settings
-    :param conf: Splunk conf file name
-    :param stanza: stanza (entry) from conf file
-    :return: returns dictionary of setting
+    #Returns dict object of config file settings
+    #:param conf: Splunk conf file name
+    #:param stanza: stanza (entry) from conf file
+   #:return: returns dictionary of setting
     """
     appdir = os.path.dirname(os.path.dirname(__file__))
     conf = "%s.conf" % conf
@@ -109,6 +109,26 @@ def setproxy(local_conf, global_conf):
     return proxy
 
 
+def dictexpand(item, key=None):
+    """
+    Flattens dictionary of dictionary using key from parent
+    :param item: dict object
+    :param key: key from parent
+    :return: dict
+    """
+    pdict = dict()
+    for k, v in item.iteritems():
+        if key:
+            k = "%s.%s" % (key, k)
+        if isinstance(v, dict):
+            cdict = dictexpand(v, k)
+            pdict = dict(pdict.items() + cdict.items())
+        else:
+            v = str(v)
+            pdict[k] = v
+    return pdict
+
+
 def tojson(jmessage):
     """
     Returns a pretty print json string
@@ -145,16 +165,13 @@ def request(url, username=None, password=None, headers=None, data=None, proxy=No
     url_encode = urllib.urlencode(data) if data else None
     connection = urllib2.Request(url, data=url_encode, headers=headers)
     if username and password:
-        encoded = base64.encode('{0}:{1}'.format(username, password))
+        encoded = base64.encodestring('{0}:{1}'.format(username, password))
         connection.add_header("Authorization", "Basic %s" % encoded)
-
     try:
         response = urllib2.urlopen(connection, timeout=timeout)
         response = dict(code=response.getcode(), msg=response.read(), headers=response.info())
-    except urllib2.HTTPError, e:
-        response = dict(code=e.code, msg=e.reason)
     except urllib2.URLError, e:
-        response = dict(code=None, msg=e.reason)
+        response = dict(code=e.code, msg=e.reason, url=url)
     except Exception:
         import traceback
         response = dict(code=None, msg=traceback.format_exc())
