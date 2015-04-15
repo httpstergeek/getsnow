@@ -1,6 +1,9 @@
+<<<<<<< HEAD
+=======
 # encoding: utf-8
 # Author: Bernardo Macias <bmacias@httpstergeek.com>
 #
+>>>>>>> master
 #
 # All rights reserved
 #
@@ -24,79 +27,15 @@ __maintainer__ = "Bernardo Macias"
 __email__ = 'bmacias@httpstergeek.com'
 __status__ = 'Production'
 
-import os
-import logging
-import logging.handlers
-import sys
+import util
 import json
-from platform import system
-from splunk.clilib import cli_common as cli
+import sys
+from logging import INFO
 from splunklib.searchcommands import \
     dispatch, GeneratingCommand, Configuration, Option
 
-platform = system().lower()
 
-# Lazy load python eggs. Loading eggs into python execution path
-if platform == 'darwin':
-    platform = 'macosx'
-running_dir = os.path.dirname(os.path.realpath(__file__))
-egg_dir = os.path.join(running_dir, 'eggs')
-for filename in os.listdir(egg_dir):
-    file_segments = filename.split('-')
-    if filename.endswith('.egg'):
-        filename = os.path.join(egg_dir, filename)
-        if len(file_segments) <= 3:
-            sys.path.append(filename)
-        else:
-            if platform in filename:
-                sys.path.append(filename)
-
-# lazy load requests module
-import requests
-
-
-def setup_logger(level):
-    """
-        :param level: Logging level
-        :type level: logger object
-        :return : logger object
-    """
-    os.environ['SPLUNK_HOME']
-    logger = logging.getLogger('getsnow')
-    logger.propagate = False  # Prevent the log messages from being duplicated in the python.log file
-    logger.setLevel(level)
-    file_handler = logging.handlers.RotatingFileHandler(os.path.join(os.environ['SPLUNK_HOME'], 'var', 'log', 'splunk', 'getsnow.log'),
-                                                        maxBytes=5000000,
-                                                        backupCount=5)
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    consolehandler = logging.StreamHandler()
-    consolehandler.setFormatter(formatter)
-    logger.addHandler(consolehandler)
-    return logger
-
-
-def getstanza(conf, stanza):
-    """
-    Returns dict object of config file settings
-    :param conf: Splunk conf file name
-    :param stanza: stanza (entry) from conf file
-    :return: returns dictionary of setting
-    """
-    appdir = os.path.dirname(os.path.dirname(__file__))
-    conf = "%s.conf" % conf
-    apikeyconfpath = os.path.join(appdir, "default", conf)
-    apikeyconf = cli.readConfFile(apikeyconfpath)
-    localconfpath = os.path.join(appdir, "local", conf)
-    if os.path.exists(localconfpath):
-        localconf = cli.readConfFile(localconfpath)
-        for name, content in localconf.items():
-            if name in apikeyconf:
-                apikeyconf[name].update(content)
-            else:
-                apikeyconf[name] = content
-    return apikeyconf[stanza]
+logger = util.setup_logger(INFO)
 
 
 def tojson(jmessage):
@@ -110,56 +49,6 @@ def tojson(jmessage):
                           sort_keys=True,
                           ensure_ascii=True)
     return jmessage
-
-
-def setproxy(local_conf, global_conf):
-    """
-    Sets up dict object for proxy settings
-    :param local_conf:
-    :param global_conf:
-    :return:
-    """
-    proxy = None
-    proxy_url = global_conf['proxy_url'] if 'proxy_url' in global_conf else None
-    proxy_url = local_conf['proxy_url'] if 'proxy_url' in local_conf else proxy_url
-    if proxy_url:
-        proxy = dict()
-        proxy_user = global_conf['proxy_user'] if 'proxy_user' in global_conf else None
-        proxy_user = local_conf['proxy_user'] if 'proxy_user' in local_conf else proxy_user
-        proxy_password = global_conf['proxy_password'] if 'proxy_password' in global_conf else None
-        proxy_password = local_conf['proxy_password'] if 'proxy_password' in local_conf else proxy_password
-        if proxy_password and proxy_user:
-            proxy_url = '%s:%s@%s' % (proxy_user, proxy_password, proxy_url)
-        elif proxy_user and not proxy_password:
-            proxy_url = '%s@%s' % (proxy_user, proxy_url)
-        elif not proxy_user and not proxy_password and proxy_url:
-            proxy_url = '%s' % proxy_url
-        else:
-            proxy = None
-        if proxy:
-            proxy['https'] = 'https://%s' % proxy_url
-            proxy['http'] = 'http://%s' % proxy_url
-    return proxy
-
-
-def dictexpand(item, key=None):
-    """
-    Flattens dictionary of dictionary using key from parent
-    :param item: dict object
-    :param key: key from parent
-    :return: dict
-    """
-    pdict = dict()
-    for k, v in item.iteritems():
-        if key:
-            k = "%s.%s" % (key, k)
-        if isinstance(v, dict):
-            cdict = dictexpand(v, k)
-            pdict = dict(pdict.items() + cdict.items())
-        else:
-            v = str(v)
-            pdict[k] = v
-    return pdict
 
 
 @Configuration()
@@ -213,51 +102,67 @@ class getSnowCommand(GeneratingCommand):
 
     def generate(self):
         # Parse and set arguments
-        logger = setup_logger(logging.INFO)
+        logger = util.setup_logger(INFO)
         if self.daysAgo and self.glideSystem:
             record = dict()
             record['error'] = 'daysAgo and glideSystem defined.  Must define only one!'
             record['_raw'] = tojson(record)
             yield record
             exit()
+
+        # get config
+        env = self.env if self.env else 'production'
+        conf = util.getstanza('getsnow', env)
+        proxy_conf = util.getstanza('getsnow', 'global')
+        proxies = util.setproxy(conf, proxy_conf)
+        username = conf['user']
+        password = conf['password']
+        release = conf['release']
+        url = conf['url']
+        timeout = int(conf['timeout']) if 'timeout'in conf else 120
+
+        # building query string
         time_range = '^opened_at>=javascript:gs.daysAgo(%s)' % self.daysAgo if self.daysAgo else ''
         time_range = '^opened_at>=javascript:gs.%s' % self.glideSystem if self.glideSystem else time_range
-        sysparam_query = '%s%s%s' % ('sysparm_query=', '^'.join(self.filters.split(' ')), time_range) if self.filters else 'sysparm_limit=1'
+        sysparam_query = '?sysparm_display_value=all%s%s%s' % ('&sysparm_query=', '^'.join(self.filters.split(',')), time_range) if self.filters else 'sysparm_limit=1'
+        sysparam_query = sysparam_query.replace(' ', '%20')
+
+        # changing URL for Fuji
+        if release == 'Fuji':
+            sysparam_query = sysparam_query.replace('&sysparm_query=', '&')
+            sysparam_query = sysparam_query.replace('^', '&')
+
         table = self.table if self.table else 'incident'
-        env = self.env if self.env else 'production'
+        # build url for with filters and table
+        url = '%s/api/now/table/%s%s' % (url, table, sysparam_query)
+        logger.info('request query: %s' % url)
 
         try:
-            # get config
-            conf = getstanza('getsnow', env)
-            proxy_conf = getstanza('getsnow', 'global')
-            proxies = setproxy(conf, proxy_conf)
-            user = conf['user']
-            password = conf['password']
-            url = conf['url']
-            timeout = int(conf['timeout']) if 'timeout'in conf else 120
-            # build url for with filters and table
-            url = '%s%s%s%s%s' % (url, '/api/now/table/', table, '?', sysparam_query)
             # retrieving data from Service now API
-            snow_request = requests.get(url, auth=(user, password), headers={'Accept': 'application/json'},
-                                        timeout=timeout, proxies=proxies)
-            records = snow_request.json()
+            records = util.request(url,
+                                   username=username,
+                                   password=password,
+                                   headers={'Accept': 'application/json'},
+                                   timeout=timeout,
+                                   proxy=proxies)
         except Exception as e:
             logger.debug('getSnowCommand: %s' % e)
-            yield {'error': e, '_raw': e}
+            yield {'error': e, '_raw': e, 'url': url}
             exit()
 
-        if snow_request.status_code == 200:
+        if records['code'] == 200:
+            records = json.loads(records['msg'])
             # for each event creating dic object for yield
             for record in records['result']:
-                record = dictexpand(record)
+                record = util.dictexpand(record)
                 record['_raw'] = tojson(record)
                 yield record
         else:
             try:
                 # If not 200 status_code showing error message in Splunk UI
-                record = dictexpand(records)
+                record = util.dictexpand(records)
                 record['url'] = url
-                record['_raw'] = tojson(records)
+                record['_raw'] = util.tojson(records)
             except Exception as e:
                 record = dict()
                 record['url'] = url

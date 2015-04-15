@@ -9,18 +9,21 @@ any top level key in the json event such as active, assigned_to, category, etc. 
 service now environments.  Multiple environments may include poc, dev, or prod can access by creating additional stanza
 and adding the argument 'env=<environment>'.
 
-This command additional allows the user to request data from any service now table by addi
-ng 'table=<string>' to there
+This command additional allows the user to request data from any service now table by adding 'table=<string>' to there
+
 query. The default is set to incidence table.
 
 click here for [Service Now Table API documentation]
 
 [Service Now Table API documentation]:http://wiki.servicenow.com/index.php?title=Table_API
 
+Get Service now is a Splunk Search command that uses the snow api  and retrieves raw json data.
+
+
 ##Supports:
 * Supports multiple Service Now Instances
 * Proxy support
-
+* Supports Service Now Eureka and Fuji
 
 
 
@@ -80,16 +83,16 @@ Viewing Available Tables
 Example Command
 ---------
 
-| getsnow filters="active=true contact_type=phone" daysAgo=30
+| getsnow filters="active=true,contact_type=phone" daysAgo=30
 
     OR
 
-| getsnow filters="active=true contact_type=phone" glideSystem="beginningOfLastWeek()"
+| getsnow filters="active=true,contact_type=phone" glideSystem="beginningOfLastWeek()"
 
     OR
 
-| getsnow filters="active=true contact_type=phone" glideSystem="beginningOfLastWeek()" env=dev
-    Note: The value dev for env should match an stanza defined within getsnow.conf:wq
+| getsnow filters="active=true,contact_type=phone,assigned_to=john smith" glideSystem="beginningOfLastWeek()" env=dev
+
 
 Recommendations
 ---------
