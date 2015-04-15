@@ -100,7 +100,7 @@ class getSnowCommand(GeneratingCommand):
 
         # changing URL for Fuji
         if release == 'Fuji':
-            sysparam_query = sysparam_query.replace('sysparm_query=', '')
+            sysparam_query = sysparam_query.replace('&sysparm_query=', '&')
             sysparam_query = sysparam_query.replace('^', '&')
 
         table = self.table if self.table else 'incident'
