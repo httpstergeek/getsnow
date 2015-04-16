@@ -152,7 +152,7 @@ class getSnowCommand(GeneratingCommand):
             # for each event creating dic object for yield
             for record in records['result']:
                 record = util.dictexpand(record)
-                record['_raw'] = tojson(record)
+                record['_raw'] = util.tojson(record)
                 yield record
         else:
             try:
@@ -164,6 +164,7 @@ class getSnowCommand(GeneratingCommand):
                 record = dict()
                 record['url'] = url
                 record['error'] = e
+                record['_raw'] = util.tojson(record)
             yield record
         exit()
 
