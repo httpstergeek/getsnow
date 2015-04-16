@@ -27,6 +27,8 @@ __status__ = 'Production'
 import util
 import json
 import sys
+import time
+import datetime
 from logging import INFO
 from splunklib.searchcommands import \
     dispatch, GeneratingCommand, Configuration, Option
@@ -151,6 +153,14 @@ class getSnowCommand(GeneratingCommand):
             records = json.loads(records['msg'])
             # for each event creating dic object for yield
             for record in records['result']:
+                dates = list()
+                dates.append({'sys_created_on.epoch': record['sys_created_on']['display_value']})
+                dates.append({'resolved_at.epoch': record['resolved_at']['display_value']})
+                dates.append({'sys_updated_on.epoch': record['sys_updated_on']['display_value']})
+                for date in dates:
+                    for key, value in date.iteritems():
+                        if value:
+                            record[key] = time.mktime(datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S").timetuple())
                 record = util.dictexpand(record)
                 record['_raw'] = util.tojson(record)
                 yield record
