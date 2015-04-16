@@ -108,7 +108,7 @@ class getSnowCommand(GeneratingCommand):
             exit()
 
         # get config
-        env = self.env if self.env else 'production'
+        env = self.env.lower() if self.env else 'production'
         conf = util.getstanza('getsnow', env)
         proxy_conf = util.getstanza('getsnow', 'global')
         proxies = util.setproxy(conf, proxy_conf)
