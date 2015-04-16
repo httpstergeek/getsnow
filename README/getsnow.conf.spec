@@ -31,7 +31,7 @@ proxy_password = <string>
 #*******
 
 
-[production]
+[<env>]
 url = http(s)://fqdn
 * sets url for service snow instance.
 * EXAMPLE: http://mycompany.service-now
