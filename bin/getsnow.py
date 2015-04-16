@@ -27,6 +27,8 @@ __status__ = 'Production'
 import util
 import json
 import sys
+import time
+import datetime
 from logging import INFO
 from splunklib.searchcommands import \
     dispatch, GeneratingCommand, Configuration, Option
