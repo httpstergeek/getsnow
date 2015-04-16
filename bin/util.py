@@ -22,7 +22,10 @@ __email__ = 'bmacias@httpstergeek.com'
 __status__ = 'Production'
 
 import os
-from splunk.clilib import cli_common as cli
+try:
+    from splunk.clilib import cli_common as cli
+except:
+    pass
 import json
 import base64
 import urllib
