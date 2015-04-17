@@ -154,7 +154,7 @@ class getSnowCommand(GeneratingCommand):
             # for each event creating dic object for yield
             for record in records['result']:
                 dates = list()
-                dates.append({'sys_created_on.epoch': record['sys_created_on']['display_value']})
+                dates.appends({'sys_created_on.epoch': record['sys_created_on']['display_value']})
                 dates.appends({'_time': record['sys_created_on']['display_value']})
                 dates.append({'resolved_at.epoch': record['resolved_at']['display_value']})
                 dates.append({'sys_updated_on.epoch': record['sys_updated_on']['display_value']})
