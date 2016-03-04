@@ -50,7 +50,7 @@ def tojson(jmessage):
     return jmessage
 
 
-@Configuration()
+@Configuration(local=True)
 class getSnowCommand(GeneratingCommand):
     """ %(synopsis)
 
