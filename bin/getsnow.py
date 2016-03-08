@@ -51,7 +51,7 @@ def tojson(jmessage):
 
 
 @Configuration(local=True)
-class getSnowCommand(GeneratingCommand):
+class getUserCommand(GeneratingCommand):
     """ %(synopsis)
 
     ##Syntax
@@ -123,12 +123,12 @@ class getSnowCommand(GeneratingCommand):
         # building query string
         time_range = '^opened_at>=javascript:gs.daysAgo(%s)' % self.daysAgo if self.daysAgo else ''
         time_range = '^opened_at>=javascript:gs.%s' % self.glideSystem if self.glideSystem else time_range
-        sysparam_query = '?sysparm_display_value=all%s%s%s' % ('&sysparm_query=', '^'.join(self.filters.split(',')), time_range) if self.filters else 'sysparm_limit=1'
+        sysparam_query = '?%s%s%s' % ('sysparm_query=', '^'.join(self.filters.split(',')), time_range) if self.filters else '?sysparm_limit=1'
         sysparam_query = sysparam_query.replace(' ', '%20')
 
         # changing URL for Fuji
         if release == 'Fuji':
-            sysparam_query = sysparam_query.replace('&sysparm_query=', '&')
+            sysparam_query = sysparam_query.replace('?&sysparm_query=', '&')
             sysparam_query = sysparam_query.replace('^', '&')
 
         table = self.table if self.table else 'incident'
@@ -153,16 +153,8 @@ class getSnowCommand(GeneratingCommand):
             records = json.loads(records['msg'])
             # for each event creating dic object for yield
             for record in records['result']:
-                dates = list()
-                dates.append({'sys_created_on.epoch': record['sys_created_on']['display_value']})
-                dates.append({'_time': record['sys_created_on']['display_value']})
-                dates.append({'resolved_at.epoch': record['resolved_at']['display_value']})
-                dates.append({'sys_updated_on.epoch': record['sys_updated_on']['display_value']})
-                for date in dates:
-                    for key, value in date.iteritems():
-                        if value:
-                            record[key] = time.mktime(datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S").timetuple())
-                record = util.dictexpand(record)
+                record['_time'] = time.mktime(datetime.datetime.strptime(record['sys_created_on'], "%Y-%m-%d %H:%M:%S").timetuple())
+                record['url'] = url
                 record['_raw'] = util.tojson(record)
                 yield record
         else:
@@ -179,4 +171,4 @@ class getSnowCommand(GeneratingCommand):
             yield record
         exit()
 
-dispatch(getSnowCommand, sys.argv, sys.stdin, sys.stdout, __name__)
+dispatch(getUserCommand, sys.argv, sys.stdin, sys.stdout, __name__)
