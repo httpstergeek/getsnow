@@ -73,7 +73,7 @@ class getUserCommand(GeneratingCommand):
 
     ##Syntax
     .. code-block::
-    getsnow filters="<key1>=<value1> <key2>=<value2>" daysAgo=<int> env=<str> table=<str>
+    getuser env=<str> user_name=<str> daysAgo=<int> env=<str>
 
     ##Description
 
@@ -84,9 +84,9 @@ class getUserCommand(GeneratingCommand):
     Return json events where where active is true and contact_type is phone for the past 30 days.
 
     .. code-block::
-        | getsnow filters="active=true contact_type=phone" daysAgo=30
+        | getsnow user_name=rick daysAgo=30
         OR
-        | getsnow filters="active=true contact_type=phone" glideSystem="beginningOfLastWeek()"
+        | getsnow env=production user_name=mortey
 
     """
 
