@@ -177,7 +177,7 @@ class getUserCommand(GeneratingCommand):
                 record.pop('cost_center', None)
                 user_sysid = record['sys_id']
                 record['sourcetype'] = 'snow:user'
-                record['url'] = user_query
+                record['source'] = user_query
                 # adding _raw to record
                 record['_raw'] = util.tojson(record)
                 record['_time'] = time.mktime(datetime.datetime.strptime(record['sys_created_on'], "%Y-%m-%d %H:%M:%S").timetuple())
@@ -186,34 +186,49 @@ class getUserCommand(GeneratingCommand):
                 yield record
 
                 # building query string incidents
-                time_range = '^opened_at>=javascript:gs.daysAgo(%s)' % self.daysAgo if self.daysAgo else ''
-                incident_query = '%s/api/now/table/%s?sysparm_query=opened_by=%s%s' % (url, 'incident', user_sysid, time_range)
+                time_range = 'opened_at>=javascript:gs.daysAgo(%s)^' % self.daysAgo if self.daysAgo else ''
+                incident_query = '%s/api/now/table/%s?sysparm_query=%sopened_by=%s' % (url, 'incident', time_range, user_sysid)
                 response = util.request(incident_query,
                                         username=username,
                                         password=password,
                                         headers={'Accept': 'application/json'}
                                         )
-                incidents = json.loads(response['msg'])['result']
-                # replacing all sys_id with user_names
-                for incident in incidents:
-                    incident = keyreplace(incident, 'closed_by', 'user_name', username, password)
-                    incident = keyreplace(incident, 'opened_by', 'user_name', username, password)
-                    incident = keyreplace(incident, 'assigned_to', 'user_name', username, password)
-                    incident = keyreplace(incident, 'resolved_by', 'user_name', username, password)
-                    incident = keyreplace(incident, 'caller_id', 'user_name', username, password)
-                    incident = keyreplace(incident, 'u_opened_for', 'user_name', username, password)
-                    incident = keyreplace(incident, 'assignment_group', 'name', username, password)
-                    incident['url'] = incident_query
-                    incident['_raw'] = util.tojson(incident)
-                    incident['sourcetype'] = 'snow:incident'
-                    incident['_time'] = time.mktime(datetime.datetime.strptime(incident['sys_created_on'], "%Y-%m-%d %H:%M:%S").timetuple())
 
-                    # removing unnecessary keys
-                    incident.pop('company', None)
-                    incident.pop('location', None)
+                if response['code'] == 200:
+                    incidents = json.loads(response['msg'])['result']
 
-                    # yield incident record
-                    yield incident
+                    # replacing all sys_id with user_names
+                    for incident in incidents:
+                        incident = keyreplace(incident, 'closed_by', 'user_name', username, password)
+                        incident = keyreplace(incident, 'opened_by', 'user_name', username, password)
+                        incident = keyreplace(incident, 'assigned_to', 'user_name', username, password)
+                        incident = keyreplace(incident, 'resolved_by', 'user_name', username, password)
+                        incident = keyreplace(incident, 'caller_id', 'user_name', username, password)
+                        incident = keyreplace(incident, 'u_opened_for', 'user_name', username, password)
+                        incident = keyreplace(incident, 'assignment_group', 'name', username, password)
+                        incident['source'] = incident_query
+                        incident['sourcetype'] = 'snow:incident'
+                        incident['_time'] = time.mktime(datetime.datetime.strptime(incident['sys_created_on'], "%Y-%m-%d %H:%M:%S").timetuple())
+                        incident['_raw'] = util.tojson(incident)
+
+                        # removing unnecessary keys
+                        incident.pop('company', None)
+                        incident.pop('location', None)
+
+                        # yield incident record
+                        yield incident
+                else:
+                    try:
+                    # If not 200 status_code showing error message in Splunk UI
+                        record = util.dictexpand(response)
+                        record['url'] = url
+                        record['_raw'] = util.tojson(response)
+                    except Exception as e:
+                        record = dict()
+                        record['url'] = url
+                        record['error'] = e
+                        record['_raw'] = util.tojson(response)
+                        yield record
 
                 asset_query = '%s/api/now/table/%s?sysparm_query=assigned_to=%s' % (url, 'alm_asset', user_sysid)
                 response = util.request(asset_query,
@@ -221,22 +236,37 @@ class getUserCommand(GeneratingCommand):
                                         password=password,
                                         headers={'Accept': 'application/json'}
                                         )
-                assets = json.loads(response['msg'])['result']
-                for asset in assets:
-                    asset.pop('support_group', None)
-                    asset.pop('department', None)
-                    asset.pop('model', None)
-                    asset.pop('ci', None)
-                    asset.pop('company', None)
-                    asset.pop('location', None)
-                    asset.pop('model_category', None)
-                    asset.pop('cost_center', None)
-                    asset.pop('sys_domain', None)
-                    asset['url'] = asset_query
-                    asset['_raw'] = util.tojson(asset)
-                    asset['_time'] = time.mktime(datetime.datetime.strptime(asset['sys_created_on'], "%Y-%m-%d %H:%M:%S").timetuple())
-                    asset['sourcetype'] = 'snow:asset'
-                    yield asset
+                if response['code'] == 200:
+                    assets = json.loads(response['msg'])['result']
+
+                    for asset in assets:
+                        asset.pop('support_group', None)
+                        asset.pop('department', None)
+                        asset.pop('model', None)
+                        asset.pop('ci', None)
+                        asset.pop('company', None)
+                        asset.pop('location', None)
+                        asset.pop('model_category', None)
+                        asset.pop('cost_center', None)
+                        asset.pop('sys_domain', None)
+                        asset['source'] = asset_query
+                        asset['_time'] = time.mktime(datetime.datetime.strptime(asset['sys_created_on'], "%Y-%m-%d %H:%M:%S").timetuple())
+                        asset['sourcetype'] = 'snow:asset'
+                        asset['_raw'] = util.tojson(asset)
+                        yield asset
+
+                else:
+                    try:
+                        # If not 200 status_code showing error message in Splunk UI
+                        record = util.dictexpand(response)
+                        record['url'] = url
+                        record['_raw'] = util.tojson(response)
+                    except Exception as e:
+                        record = dict()
+                        record['url'] = url
+                        record['error'] = e
+                        record['_raw'] = util.tojson(response)
+                        yield record
 
         else:
             try:
