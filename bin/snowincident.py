@@ -30,6 +30,7 @@ import time
 import datetime
 import requests
 import sys
+import copy
 from logging import INFO
 from splunklib.searchcommands import \
     dispatch, GeneratingCommand, Configuration, Option
@@ -38,7 +39,7 @@ from splunklib.searchcommands import \
 logger = util.setup_logger(INFO)
 
 
-@Configuration(local=True)
+@Configuration(local=True, type='eventing', retainsevents=True, streaming=False)
 class snowincidentCommand(GeneratingCommand):
     """ %(synopsis)
 
@@ -78,7 +79,13 @@ class snowincidentCommand(GeneratingCommand):
             doc='''**Syntax:** **table=***<str>*
         **Description:** How many days ago to retrieve incidents''',
             require=False)
+
     daysby = Option(
+            doc='''**Syntax:** **table=***<str>*
+        **Description:** How many days ago to retrieve incidents''',
+            require=False)
+
+    active = Option(
             doc='''**Syntax:** **table=***<str>*
         **Description:** How many days ago to retrieve incidents''',
             require=False)
@@ -98,6 +105,7 @@ class snowincidentCommand(GeneratingCommand):
         proxy_conf = util.getstanza('getsnow', 'global')
         username = conf['user']
         password = conf['password']
+        active = self.active.lower() if self.active else ''
         value_replacements = conf['value_replacements'].split(',') if conf['value_replacements'] else []
         user_names = self.user_names
         assigment_groups = self.assignment_groups
@@ -105,7 +113,9 @@ class snowincidentCommand(GeneratingCommand):
         daysby = self.daysby if self.daysby else 'opened_at'
         daysAgo = self.daysAgo if self.daysAgo else '10'
         url = conf['url']
-        time_range = '%s>=javascript:gs.daysAgo(%s)' % (daysby, daysAgo)
+        if active:
+            active = active if active == 'false' else 'true'
+        time_range = '%s>=javascript:gs.daysAgo(%s)^active=%s' % (daysby, daysAgo, active)
         retrived_objects = {'user':{}, 'group': {}}
 
         replaces =[]
@@ -155,8 +165,11 @@ class snowincidentCommand(GeneratingCommand):
                                         headers={'Accept': 'application/json'}
                                         )
                 headers = response.headers
+                source = copy.copy(url)
+                xcount = headers['X-Total-Count'] if 'X-Total-Count' in headers else ''
                 if 'Link' in headers:
                     links = headers['Link'].split(',')
+
                     for link in links:
                         if 'rel="next"' in link:
                             url = link.split(';')[0][1:-1]
@@ -169,6 +182,8 @@ class snowincidentCommand(GeneratingCommand):
                     results = response.json()
                     if 'result' in results:
                         for result in results['result']:
+                            result['X-Total-Count'] = xcount
+                            result['source'] = source
                             yield result
 
         # user defined value replacements for keys with sys_id and links
@@ -205,15 +220,12 @@ class snowincidentCommand(GeneratingCommand):
         else:
             sysparm_query = '&sysparm_query=' + time_range
 
-        query_string = '%s/api/now/table/%s?sysparm_limit=1000%s' % (url, 'incident', sysparm_query)
+        query_string = '%s/api/now/table/%s?sysparm_limit=2000%s' % (url, 'incident', sysparm_query)
         retrived_objects = dict(retrived_objects['user'].items() + retrived_objects['group'].items())
         for record in getRecords(query_string, {'user': username, 'password':password}):
             for replace in replaces:
                 record = keyreplace(record, replace['tokey'], replace['fromkey'], username, password)
-            record['source'] = query_string
             record['sourcetype'] = 'snow:incident'
-            for field in ['opened_at', 'resolved_at', 'closed_at']:
-                record = updatetime(record, field)
             record['_raw'] = util.tojson(record)
             record = updatetime(record,'sys_created_on', '_time')
             yield record
