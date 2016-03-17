@@ -63,10 +63,9 @@ class snow:
 
     @staticmethod
     def updatetime(record, field, destfield=None):
-        if not destfield:
-            destfield = field
+        if destfield:
             timeobject = dt.strptime(record[field],"%Y-%m-%d %H:%M:%S").timetuple()
-            record[destfield] = time.mktime(timeobject) if record[field] else ''
+            record[destfield] = time.mktime(timeobject) if field in record else ''
         return record
 
     @staticmethod
@@ -92,16 +91,17 @@ class snow:
         :param mapto: string - key in lookup link to store for future lookups
         :return:
         """
-        exuded = self.filterbuilder(key, values)
-        query_string = self.reqencode([exuded], table=table)
         sysid = []
         user_records = []
-        for record in self.getrecords(query_string):
-            if record['sys_id']:
-                if mapto:
-                    self.sysidLookup[record['sys_id']] = record[mapto]
-                sysid.append(str(record['sys_id']))
-                user_records.append(record)
+        if values:
+            exuded = self.filterbuilder(key, values)
+            query_string = self.reqencode([exuded], table=table)
+            for record in self.getrecords(query_string):
+                if record['sys_id']:
+                    if mapto:
+                        self.sysidLookup[record['sys_id']] = record[mapto]
+                    sysid.append(str(record['sys_id']))
+                    user_records.append(record)
         return [sysid, user_records]
 
     def getrecords(self, url, username=None, password=None, limit=None):
