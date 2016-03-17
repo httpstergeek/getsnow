@@ -40,7 +40,7 @@ logger = util.setup_logger(INFO)
 
 
 @Configuration(local=True, type='eventing', retainsevents=True, streaming=False)
-class snowincidentCommand(GeneratingCommand):
+class snowIncidentCommand(GeneratingCommand):
     """ %(synopsis)
 
     ##Syntax
@@ -235,4 +235,4 @@ class snowincidentCommand(GeneratingCommand):
             yield record
         exit()
 
-dispatch(snowincidentCommand, sys.argv, sys.stdin, sys.stdout, __name__)
+dispatch(snowIncidentCommand, sys.argv, sys.stdin, sys.stdout, __name__)
