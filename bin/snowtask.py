@@ -61,16 +61,12 @@ class snowTaskCommand(GeneratingCommand):
 
     user_name = Option(
             doc='''**Syntax:** **table=***<str>*
-        **Description:** user_name of user''',
-            require=False)
-    assignment_group = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** assignment_group incident assigned to ticket''',
+        **Description:** User to filterby''',
             require=False)
 
-    filterby = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** assignment_group incident assigned to ticket''',
+    assignment_group = Option(
+            doc='''**Syntax:** **assignment_group=***<str>*
+        **Description:** Assignment group in Service Now''',
             require=False)
 
     daysAgo = Option(
@@ -78,19 +74,14 @@ class snowTaskCommand(GeneratingCommand):
         **Description:** How many days ago to retrieve incidents''',
             require=False)
 
-    daysby = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** How many days ago to retrieve incidents''',
-            require=False)
-
     active = Option(
             doc='''**Syntax:** **table=***<str>*
-        **Description:** How many days ago to retrieve incidents''',
+        **Description:** Boolean True/False.  If record is active. Default None which will pull both''',
             require=False)
 
     limit = Option(
             doc='''**Syntax:** **table=***<str>*
-        **Description:** How many days ago to retrieve incidents''',
+        **Description:** Maximium number of records in batches of 10,000''',
             require=False)
 
     env = Option(
@@ -104,7 +95,7 @@ class snowTaskCommand(GeneratingCommand):
         #proxy_conf = util.getstanza('getsnow', 'global')
         username = conf['user']
         password = conf['password']
-        active = self.active.strip() if self.active else 'True'
+        active = self.active
         user_name = self.user_name.split(',') if self.user_name else []
         assigment_group = self.assignment_group.split(',') if self.assignment_group else []
         daysAgo = int(self.daysAgo) if self.daysAgo else None
@@ -113,6 +104,7 @@ class snowTaskCommand(GeneratingCommand):
         value_replacements = conf['value_replacements']
         if active:
             try:
+                active = active.strip()
                 active = active[0].upper() + active[1:].lower()
                 active = ast.literal_eval(active)
             except:
@@ -129,8 +121,7 @@ class snowTaskCommand(GeneratingCommand):
         exuded1 = snowtask.filterbuilder('assigned_to', user_info)
         exuded2 = snowtask.filterbuilder('assignment_group', group_info)
         url = snowtask.reqencode([exuded1, exuded2], table='sc_task', active=active, days=daysAgo)
-
-        for record in snowtask.getrecords(url,limit=limit):
+        for record in snowtask.getrecords(url, limit=limit):
             record = snowtask.updaterecord(record, sourcetype='snow:task')
             record['_raw'] = util.tojson(record)
             yield record

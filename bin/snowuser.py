@@ -61,7 +61,7 @@ class snowUserCommand(GeneratingCommand):
 
     user_name = Option(
             doc='''**Syntax:** **table=***<str>*
-        **Description:** user_name of user''',
+        **Description:** User''',
             require=True)
 
     daysAgo = Option(
