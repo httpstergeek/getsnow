@@ -12,6 +12,8 @@
 #     value in the specific stanza takes precedence.
 
 
+
+### Currently Proxy does not work in the this version.
 [global]
 proxy_url = <url>:<port>|<url>
 * set proxy server,  optional.
