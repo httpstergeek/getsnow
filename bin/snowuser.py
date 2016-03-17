@@ -68,7 +68,7 @@ def keyreplace(record, keyto, keyfrom, username, password):
     return record
 
 @Configuration(local=True)
-class getUserCommand(GeneratingCommand):
+class snowUserCommand(GeneratingCommand):
     """ %(synopsis)
 
     ##Syntax
@@ -281,4 +281,4 @@ class getUserCommand(GeneratingCommand):
                 record['_raw'] = util.tojson(response)
             yield record
 
-dispatch(getUserCommand, sys.argv, sys.stdin, sys.stdout, __name__)
+dispatch(snowUserCommand, sys.argv, sys.stdin, sys.stdout, __name__)
