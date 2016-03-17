@@ -27,6 +27,7 @@ __status__ = 'Production'
 import requests
 import time
 import re
+import ast
 from datetime import datetime as dt
 from copy import copy as cp
 
@@ -119,6 +120,10 @@ class snow:
                         break
                     else:
                         url = None
+                try:
+                    limit = ast.literal_eval(limit)
+                except:
+                    limit = 0
                 if limit != 0:
                     nextbatch = re.search('sysparm_offset=([^?>\s]+)', url)
                     nextbatch = int(nextbatch.group(1)) if nextbatch else 0
