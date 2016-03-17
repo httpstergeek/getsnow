@@ -116,7 +116,6 @@ class getUserCommand(GeneratingCommand):
         proxies = util.setproxy(conf, proxy_conf)
         username = conf['user']
         password = conf['password']
-        release = conf['release']
         url = conf['url']
         timeout = int(conf['timeout']) if 'timeout'in conf else 120
 

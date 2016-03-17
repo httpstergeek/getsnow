@@ -42,6 +42,7 @@ user = Service Now User
 password = Service Now user password
 * set password for Service Now user, optional.  Must define user.
 
-release = Service Now Release code
+value_replacements = Keys to replace from link record where sys_id is present
 * Sets release to Service Now release code.  Defaults to Eureka. Fuji
-
+* EXAMPLE: closed_by=user_name,opened_by=user_name,assigned_to=user_name,resolved_by=user_name,caller_id=user_name,u_opened_for=user_name,assignment_group=name,request=number,parent=number,request_item=number
+* In the example closed_by is the key in the Service Now record where a sys_id and link are the value.  user_name is the key in the link used to replaced the update the original record.
