@@ -25,10 +25,7 @@ __email__ = 'bmacias@httpstergeek.com'
 __status__ = 'Production'
 
 import util
-import json
 import sys
-import time
-import datetime
 from snowpy import snow
 from logging import INFO
 from splunklib.searchcommands import \
@@ -37,44 +34,13 @@ from splunklib.searchcommands import \
 
 logger = util.setup_logger(INFO)
 
-
-def tojson(jmessage):
-    """
-    Returns a pretty print json string
-    :param jmessage: dict object
-    :return: str
-    """
-    jmessage = json.dumps(json.loads(json.JSONEncoder().encode(jmessage)),
-                          indent=4,
-                          sort_keys=True,
-                          ensure_ascii=True)
-    return jmessage
-
-retrived_objects = {}
-
-def keyreplace(record, keyto, keyfrom, username, password):
-    if 'value' in record[keyto]:
-        value = record[keyto]['value']
-        if value in retrived_objects:
-            record[keyto] = retrived_objects[value]
-        else:
-            response = util.request(record[keyto]['link'],
-                                    username=username,
-                                    password=password,
-                                    headers={'Accept': 'application/json'}
-                                    )
-            usern = json.loads(response['msg'])['result'][keyfrom]
-            record[keyto] = usern
-            retrived_objects[value] = usern
-    return record
-
 @Configuration(local=True)
 class snowUserCommand(GeneratingCommand):
     """ %(synopsis)
 
     ##Syntax
     .. code-block::
-    getuser env=<str> user_name=<str> daysAgo=<int> env=<str>
+    snowuser env=<str> user_name=<str> daysAgo=<int> env=<str>
 
     ##Description
 
@@ -85,9 +51,11 @@ class snowUserCommand(GeneratingCommand):
     Return json events where where active is true and contact_type is phone for the past 30 days.
 
     .. code-block::
-        | getsnow user_name=rick daysAgo=30
+        | snowuser user_name=rick daysAgo=30
         OR
-        | getsnow env=production user_name=mortey
+        | snowuser env=production user_name=mortey
+        OR
+        | snowuser env=production user_name="mortey,rick"
 
     """
 
@@ -107,10 +75,7 @@ class snowUserCommand(GeneratingCommand):
             require=False)
 
     def generate(self):
-        # Parse and set arguments
         logger = util.setup_logger(INFO)
-
-        # get config
         env = self.env.lower() if self.env else 'production'
         conf = util.getstanza('getsnow', env)
         # Proxy not currently used in this version
@@ -122,7 +87,6 @@ class snowUserCommand(GeneratingCommand):
         value_replacements = conf['value_replacements']
         user_name = self.user_name.split(',')
         daysAgo = int(self.daysAgo) if self.daysAgo else 30
-
         snowuser = snow(url, username, password)
         snowuser.replacementsdict(value_replacements)
         user_info = snowuser.getsysid('sys_user', 'user_name', user_name, mapto='user_name')
