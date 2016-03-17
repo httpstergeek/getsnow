@@ -26,11 +26,9 @@ __status__ = 'Production'
 
 
 import util
-import time
-import datetime
-import requests
 import sys
-import copy
+import ast
+from snowpy import snow
 from logging import INFO
 from splunklib.searchcommands import \
     dispatch, GeneratingCommand, Configuration, Option
@@ -62,17 +60,19 @@ class snowIncidentCommand(GeneratingCommand):
 
     """
 
-    user_names = Option(
+    user_name = Option(
             doc='''**Syntax:** **table=***<str>*
-        **Description:** user_name of user''',
+        **Description:** User to filterby''',
             require=False)
-    assignment_groups = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** assignment_group incident assigned to ticket''',
+
+    assignment_group = Option(
+            doc='''**Syntax:** **assignment_group=***<str>*
+        **Description:** Assignment group in Service Now''',
             require=False)
-    filterby = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** assignment_group incident assigned to ticket''',
+
+    filterBy = Option(
+            doc='''**Syntax:** **filterBy=***<str>*
+        **Description:** field to filter by . Default is assigned_to''',
             require=False)
 
     daysAgo = Option(
@@ -80,14 +80,19 @@ class snowIncidentCommand(GeneratingCommand):
         **Description:** How many days ago to retrieve incidents''',
             require=False)
 
-    daysby = Option(
+    daysBy = Option(
             doc='''**Syntax:** **table=***<str>*
-        **Description:** How many days ago to retrieve incidents''',
+        **Description:** Service Now field to retrieve records using dayAgo''',
             require=False)
 
     active = Option(
             doc='''**Syntax:** **table=***<str>*
-        **Description:** How many days ago to retrieve incidents''',
+        **Description:** Boolean True/False.  If record is active. Default None which will pull both''',
+            require=False)
+
+    limit = Option(
+            doc='''**Syntax:** **table=***<str>*
+        **Description:** Maximium number of records in batches of 10,000''',
             require=False)
 
     env = Option(
@@ -96,143 +101,43 @@ class snowIncidentCommand(GeneratingCommand):
             require=False)
 
     def generate(self):
-        # Parse and set arguments
         logger = util.setup_logger(INFO)
-
-        # get config
         env = self.env.lower() if self.env else 'production'
         conf = util.getstanza('getsnow', env)
-        proxy_conf = util.getstanza('getsnow', 'global')
+        #proxy_conf = util.getstanza('getsnow', 'global')
         username = conf['user']
         password = conf['password']
-        active = self.active.lower() if self.active else ''
-        value_replacements = conf['value_replacements'].split(',') if conf['value_replacements'] else []
-        user_names = self.user_names
-        assigment_groups = self.assignment_groups
-        filterby = self.filterby if self.filterby else 'assigned_to'
-        daysby = self.daysby if self.daysby else 'opened_at'
-        daysAgo = self.daysAgo if self.daysAgo else '10'
+        active = self.active
+        user_name = self.user_name.split(',') if self.user_name else []
+        assigment_group = self.assignment_group.split(',') if self.assignment_group else []
+        daysAgo = int(self.daysAgo) if self.daysAgo else None
+        limit = self.limit
+        daysBy = self.daysBy if self.daysBy else 'opened_at'
+        filterBy = self.filterBy if self.filterBy else 'assigned_to'
         url = conf['url']
+        value_replacements = conf['value_replacements']
         if active:
-            active = active if active == 'false' else 'true'
-        time_range = '%s>=javascript:gs.daysAgo(%s)^active=%s' % (daysby, daysAgo, active)
-        retrived_objects = {'user':{}, 'group': {}}
-
-        replaces =[]
-        user_sysid=''
-        group_sysid=''
-
-        def keyreplace(record, keyto, keyfrom, username, password):
-            if keyto in record:
-                if 'value' in record[keyto]:
-                    value = record[keyto]['value']
-                    if value == 'system':
-                        record[keyto] = 'system'
-                    else:
-                        if value in retrived_objects:
-                            record[keyto] = retrived_objects[value]
-                        else:
-                            response = requests.get(record[keyto]['link'],
-                                                    auth=(username, password),
-                                                    headers={'Accept': 'application/json'}
-                                                    )
-                            if response.status_code == 200:
-                                usern = response.json()['result'][keyfrom]
-                                record[keyto] = usern
-                                retrived_objects[value] = usern
-            return record
-
-        def updatetime(record ,field, destfield=None):
-            if not destfield:
-                destfield = field
-            record[destfield] = time.mktime(datetime.datetime.strptime(record[field],"%Y-%m-%d %H:%M:%S").timetuple()) if record['sys_created_on'] else ''
-            return record
-
-        def filterbuilder(filter, filterarg):
-            if filterarg:
-                filterarg = filterarg.split(',')
-                filterarg = [filter.strip() + '='+x.strip() for x in filterarg if x]
-                filterarg = '^OR'.join(filterarg).replace(' ', '%20')
-            else:
-                filterarg = ''
-            return filterarg
-
-
-        def getRecords(url, auth=None):
-            while url:
-                response = requests.get(url,
-                                        auth=(auth['user'], auth['password']),
-                                        headers={'Accept': 'application/json'}
-                                        )
-                headers = response.headers
-                source = copy.copy(url)
-                xcount = headers['X-Total-Count'] if 'X-Total-Count' in headers else ''
-                if 'Link' in headers:
-                    links = headers['Link'].split(',')
-
-                    for link in links:
-                        if 'rel="next"' in link:
-                            url = link.split(';')[0][1:-1]
-                            break
-                        else:
-                            url = None
-                else:
-                    url = None
-                if response.status_code == 200:
-                    results = response.json()
-                    if 'result' in results:
-                        for result in results['result']:
-                            result['X-Total-Count'] = xcount
-                            result['source'] = source
-                            yield result
-
-        # user defined value replacements for keys with sys_id and links
-        for value_replacement in value_replacements:
-            if '=' in value_replacement:
-                k,v = value_replacement.split('=')
-                replaces.append({'tokey':k, 'fromkey':v})
-
-        if user_names:
-            filterarg = ''
-            params = filterbuilder('user_name', user_names)
-            query_string = '%s/api/now/table/%s?sysparm_query=%s' % (url,'sys_user', params)
-            for record in getRecords(query_string, {'user': username, 'password': password}):
-                if record['sys_id']:
-                    retrived_objects['user'][record['sys_id']] = record['user_name']
-                    filterarg = record['sys_id'] if not filterarg else ','.join([filterarg, record['sys_id']])
-            user_sysid = filterbuilder(filterby, filterarg) if filterarg else ''
-
-        if assigment_groups:
-            filterarg = ''
-            params = filterbuilder('name', assigment_groups)
-            query_string = '%s/api/now/table/%s?sysparm_query=%s' % (url,'sys_user_group', params)
-            for record in getRecords(query_string, {'user':username, 'password':password}):
-                if record['sys_id']:
-                    retrived_objects['group'][record['sys_id']] = record['name']
-                    filterarg = record['sys_id'] if not filterarg else ','.join([filterarg, record['sys_id']])
-            group_sysid = filterbuilder('assignment_group', filterarg) if filterarg else ''
-
-        if group_sysid or user_sysid:
-            sysparm_query = [time_range, group_sysid, user_sysid]
-            sysparm_query = [x for x in sysparm_query if x]
-            sysparm_query = '^'.join(sysparm_query)
-            sysparm_query = '&sysparm_query=' + sysparm_query
-        else:
-            sysparm_query = '&sysparm_query=' + time_range
-
-        query_string = '%s/api/now/table/%s?sysparm_limit=2000%s' % (url, 'incident', sysparm_query)
-        retrived_objects = dict(retrived_objects['user'].items() + retrived_objects['group'].items())
-        for record in getRecords(query_string, {'user': username, 'password':password}):
-            for replace in replaces:
-                record = keyreplace(record, replace['tokey'], replace['fromkey'], username, password)
-            record['sourcetype'] = 'snow:incident'
-            record['_raw'] = util.tojson(record)
-            record = updatetime(record,'sys_created_on', '_time')
-            yield record
-        else:
-            record = {'Warn': 'Records not found'}
+            try:
+                active = active.strip()
+                active = active[0].upper() + active[1:].lower()
+                active = ast.literal_eval(active)
+            except:
+                active = True
+        if limit:
+            try:
+                limit = int(limit)
+            except:
+                limit = 10000
+        snowincident = snow(url, username, password)
+        snowincident.replacementsdict(value_replacements)
+        user_info = snowincident.getsysid('sys_user', 'user_name', user_name, mapto='user_name')[0]
+        group_info = snowincident.getsysid('sys_user_group', 'name', assigment_group, mapto='name')[0]
+        exuded1 = snowincident.filterbuilder(filterBy, user_info)
+        exuded2 = snowincident.filterbuilder('assignment_group', group_info)
+        url = snowincident.reqencode([exuded1, exuded2], table='incident', active=active, timeby=daysBy, days=daysAgo)
+        for record in snowincident.getrecords(url, limit=limit):
+            record = snowincident.updaterecord(record, sourcetype='snow:incident')
             record['_raw'] = util.tojson(record)
             yield record
-        exit()
 
 dispatch(snowIncidentCommand, sys.argv, sys.stdin, sys.stdout, __name__)
