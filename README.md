@@ -22,8 +22,10 @@ Get Service now is a Splunk Search command that uses the snow api  and retrieves
 
 ##Supports:
 * Supports multiple Service Now Instances
-* Proxy support
-* Supports Service Now Eureka and Fuji
+
+
+##Deprecated
+* proxy support
 
 
 
@@ -61,10 +63,13 @@ Installation instructions
 
 3) configure [production] stanza with url to Service Now instance. Note: if proxy look at README for proxy config.
 
+4) in stanza update value_replacements with keys and values you would like to update from sys_id.
+
 
 Note:   The Service Now user that is defined in each stanza requires read permission to incidents table at minimum.
         If you plan on using the table argument you must also grant the user read permission to those tables.
         consult with our ServiceNow Admin.
+        
 
 Viewing Available Tables
 --------
@@ -80,18 +85,57 @@ Viewing Available Tables
 
 
 
-Example Command
+snowincident
 ---------
+snowincident retrieve incidents records.
 
-| getsnow filters="active=true,contact_type=phone" daysAgo=30
+*user_name        - User to filter by
+*assignment_group - filter by assignment_group
+*filterBy         - field to filter user_name by.  Valid fields assigned_to, sys_updated_by, opened_by, u_opened_for, resolved_by
+*daysAgo          - How many days ago from now to retrieve incidents
+*daysBy           - field to apply daysAgo.   Valid fields closed_at, resolved_at, opened_at, sys_updated_on, sys_created_on
+*active           - Boolean True/False.  If record is active. Default None which will pull both
+*limit            - Maximium number of records in batches of 10,000
+*env              - Environment to query. Environment must be in conf. Default production.
 
-    OR
+snownow
+---------
+General query tool which allows users to query any table.
 
-| getsnow filters="active=true,contact_type=phone" glideSystem="beginningOfLastWeek()"
+*table    - sets which table to query. Default incident table.
+*filters  - list of key values where key and value are present. If no filters specified returns 1 even. Example filters="active=true,sys_created_by=rick,severity=3"
+*limit    - Maximium number of records in batches of 10,000
+*daysAgo  - How many days ago from now to retrieve records
+*env      - Environment to query. Environment must be in conf. Default production.
 
-    OR
+snowoutage
+---------
+Retrieves outages
 
-| getsnow filters="active=true,contact_type=phone,assigned_to=john smith" glideSystem="beginningOfLastWeek()" env=dev
+*daysAgo  - How many days ago from now to retrieve records
+*env      - Environment to query. Environment must be in conf. Default production
+
+snowtask
+---------
+Pulls tasks for users
+
+*user_name        - User to filter by
+*assignment_group - filter by assignment_group
+*daysAgo          - How many days ago from now to retrieve records
+*active           - Boolean True/False.  If record is active. Default None which will pull both
+*limit            - Maximium number of records in batches of 10,000
+*env              - Environment to query. Environment must be in conf. Default production.
+
+
+snowuser
+--------
+Retreives user record, assigned assets, and opened tickets
+
+*user_name        - User to filter by
+*daysAgo          - How many days ago from now to retrieve records
+*env              - Environment to query. Environment must be in conf. Default production.
+
+
 
 
 Recommendations
