@@ -25,30 +25,15 @@ __email__ = 'bmacias@httpstergeek.com'
 __status__ = 'Production'
 
 import util
-import json
 import sys
-import time
-import datetime
+import ast
+from snowpy import snow
 from logging import INFO
 from splunklib.searchcommands import \
     dispatch, GeneratingCommand, Configuration, Option
 
 
 logger = util.setup_logger(INFO)
-
-
-def tojson(jmessage):
-    """
-    Returns a pretty print json string
-    :param jmessage: dict object
-    :return: str
-    """
-    jmessage = json.dumps(json.loads(json.JSONEncoder().encode(jmessage)),
-                          indent=4,
-                          sort_keys=True,
-                          ensure_ascii=True)
-    return jmessage
-
 
 @Configuration(local=True)
 class snowNowCommand(GeneratingCommand):
@@ -76,23 +61,17 @@ class snowNowCommand(GeneratingCommand):
     table = Option(
         doc='''**Syntax:** **table=***<str>*
         **Description:** sets which table to query. Default incident table.''',
-        require=False)
+        require=True)
 
     filters = Option(
         doc='''**Syntax:** **filters=***<str>*
         **Description:** list of key values where key and value are present. If no filters specified returns 1 event''',
-        require=False)
+        require=True)
 
     daysAgo = Option(
         doc='''**Syntax:** **poolOnly=***<int>*
         **Description:** Filter for number of days to return.  Limit of event still 1000. Default None''',
-        require=False)
-
-    glideSystem= Option(
-        doc='''**Syntax:** **glideSystem=***<str>*
-        **Description:** Allows use to pass any GlideSystem as defined by Service Now. It is up to the user to format
-        function.''',
-        require=False)
+        require=True)
 
     env = Option(
         doc='''**Syntax:** **env=***<str>*
@@ -100,75 +79,37 @@ class snowNowCommand(GeneratingCommand):
         require=False)
 
     def generate(self):
-        # Parse and set arguments
-        logger = util.setup_logger(INFO)
-        if self.daysAgo and self.glideSystem:
-            record = dict()
-            record['error'] = 'daysAgo and glideSystem defined.  Must define only one!'
-            record['_raw'] = tojson(record)
-            yield record
-            exit()
-
-        # get config
         env = self.env.lower() if self.env else 'production'
         conf = util.getstanza('getsnow', env)
         proxy_conf = util.getstanza('getsnow', 'global')
-        proxies = util.setproxy(conf, proxy_conf)
+        #proxies = util.setproxy(conf, proxy_conf)
         username = conf['user']
         password = conf['password']
-        release = conf['release']
         url = conf['url']
-        timeout = int(conf['timeout']) if 'timeout'in conf else 120
-
-        # building query string
-        time_range = '^opened_at>=javascript:gs.daysAgo(%s)' % self.daysAgo if self.daysAgo else ''
-        time_range = '^opened_at>=javascript:gs.%s' % self.glideSystem if self.glideSystem else time_range
-        sysparam_query = '?%s%s%s' % ('sysparm_query=', '^'.join(self.filters.split(',')), time_range) if self.filters else '?sysparm_limit=1'
-        sysparam_query = sysparam_query.replace(' ', '%20')
-
-        # changing URL for Fuji
-        if release == 'Fuji':
-            sysparam_query = sysparam_query.replace('?&sysparm_query=', '&')
-            sysparam_query = sysparam_query.replace('^', '&')
-
-        table = self.table if self.table else 'incident'
-        # build url for with filters and table
-        url = '%s/api/now/table/%s%s' % (url, table, sysparam_query)
-        logger.info('request query: %s' % url)
-
-        try:
-            # retrieving data from Service now API
-            records = util.request(url,
-                                   username=username,
-                                   password=password,
-                                   headers={'Accept': 'application/json'},
-                                   timeout=timeout,
-                                   proxy=proxies)
-        except Exception as e:
-            logger.debug('getSnowCommand: %s' % e)
-            yield {'error': e, '_raw': e, 'url': url}
-            exit()
-
-        if records['code'] == 200:
-            records = json.loads(records['msg'])
-            # for each event creating dic object for yield
-            for record in records['result']:
-                record['_time'] = time.mktime(datetime.datetime.strptime(record['sys_created_on'], "%Y-%m-%d %H:%M:%S").timetuple())
-                record['url'] = url
-                record['_raw'] = util.tojson(record)
-                yield record
-        else:
-            try:
-                # If not 200 status_code showing error message in Splunk UI
-                record = util.dictexpand(records)
-                record['url'] = url
-                record['_raw'] = util.tojson(records)
-            except Exception as e:
-                record = dict()
-                record['url'] = url
-                record['error'] = e
-                record['_raw'] = util.tojson(record)
+        value_replacements = conf['value_replacements']
+        daysAgo = self.daysAgo
+        daysBy = self.daysAgo
+        filters = self.filters
+        table = self.table
+        limit = self.limit
+        bfilter = {}
+        filters = filters.split(',')
+        exuded = []
+        for x in filters:
+            k, v = x.split('=')
+            if k in bfilter:
+                bfilter[k].append(v)
+            else:
+                bfilter[k] = []
+                bfilter[k].append(v)
+        snownow = snow(url, username, password)
+        snownow.replacementsdict(value_replacements)
+        for k, v in bfilter.iteritems():
+            exuded.append(snownow.filterbuilder(k, v))
+        url = snownow.reqencode(exuded, table=table, timeby=daysBy, days=daysAgo)
+        for record in snownow.getrecords(url, limit):
+            record = snownow.updaterecord(record, sourcetype='snow')
+            record['_raw'] = util.tojson(record)
             yield record
-        exit()
 
 dispatch(snowNowCommand, sys.argv, sys.stdin, sys.stdout, __name__)
