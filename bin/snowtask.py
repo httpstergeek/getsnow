@@ -95,7 +95,7 @@ class snowTaskCommand(GeneratingCommand):
         #proxy_conf = util.getstanza('getsnow', 'global')
         username = conf['user']
         password = conf['password']
-        active = self.active
+        active = self.active if self.active else 'true'
         user_name = self.user_name.split(',') if self.user_name else []
         assigment_group = self.assignment_group.split(',') if self.assignment_group else []
         daysAgo = int(self.daysAgo) if self.daysAgo else None

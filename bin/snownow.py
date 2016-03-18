@@ -90,7 +90,7 @@ class getUserCommand(GeneratingCommand):
 
     glideSystem= Option(
         doc='''**Syntax:** **glideSystem=***<str>*
-        **Description:** Allows use to pass any GlideSystem as defined by Service Now. It is up to the user to format 
+        **Description:** Allows use to pass any GlideSystem as defined by Service Now. It is up to the user to format
         function.''',
         require=False)
 
@@ -116,6 +116,7 @@ class getUserCommand(GeneratingCommand):
         proxies = util.setproxy(conf, proxy_conf)
         username = conf['user']
         password = conf['password']
+        release = conf['release']
         url = conf['url']
         timeout = int(conf['timeout']) if 'timeout'in conf else 120
 
