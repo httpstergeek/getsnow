@@ -52,9 +52,9 @@ class snowNowCommand(GeneratingCommand):
     Return json events where where active is true and contact_type is phone for the past 30 days.
 
     .. code-block::
-        | getsnow filters="active=true contact_type=phone" daysAgo=30
+        | snownow filters="active=true,contact_type=phone" daysAgo=30
         OR
-        | getsnow filters="active=true contact_type=phone" glideSystem="beginningOfLastWeek()"
+        | snownow filters="active=truecontact_type=phone" limit=10000"
 
     """
 
@@ -66,6 +66,11 @@ class snowNowCommand(GeneratingCommand):
     filters = Option(
         doc='''**Syntax:** **filters=***<str>*
         **Description:** list of key values where key and value are present. If no filters specified returns 1 event''',
+        require=True)
+
+    limit = Option(
+        doc='''**Syntax:** **filters=***<str>*
+        **Description:** Maximium number of records in batches of 10,000''',
         require=True)
 
     daysAgo = Option(
@@ -81,7 +86,7 @@ class snowNowCommand(GeneratingCommand):
     def generate(self):
         env = self.env.lower() if self.env else 'production'
         conf = util.getstanza('getsnow', env)
-        proxy_conf = util.getstanza('getsnow', 'global')
+        #proxy_conf = util.getstanza('getsnow', 'global')
         #proxies = util.setproxy(conf, proxy_conf)
         username = conf['user']
         password = conf['password']
