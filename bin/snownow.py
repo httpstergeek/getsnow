@@ -51,7 +51,7 @@ def tojson(jmessage):
 
 
 @Configuration(local=True)
-class getUserCommand(GeneratingCommand):
+class snowNowCommand(GeneratingCommand):
     """ %(synopsis)
 
     ##Syntax
@@ -171,4 +171,4 @@ class getUserCommand(GeneratingCommand):
             yield record
         exit()
 
-dispatch(getUserCommand, sys.argv, sys.stdin, sys.stdout, __name__)
+dispatch(snowNowCommand, sys.argv, sys.stdin, sys.stdout, __name__)
