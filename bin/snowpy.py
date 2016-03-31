@@ -176,16 +176,18 @@ class snow:
         sysparm_query = self._query.format(self.url, table, sysparm_limit, filters)
         return sysparm_query
 
-    def updaterecord(self, record, sourcetype='snow'):
+    def updaterecord(self, record, sourcetype='snow',lookup=False):
         """
         Updates Service Now sys_id with value for record links, _time, source, and sourcetype
         :rtype: dict
         :param record: dict - single Service Now record
         :param sourcetype:  str - sourcetype for Splunk
+        :param lookup:  bool - lookup sysid disabled
         :return:
         """
-        for k, v in self.replacements.iteritems():
-            record = self.valuesreplace(record, k, v)
+        if lookup:
+            for k, v in self.replacements.iteritems():
+                record = self.valuesreplace(record, k, v)
         record['sourcetype'] = sourcetype
         record['source'] = self.lasturl
         record = self.updatetime(record, 'sys_created_on', '_time')
@@ -209,9 +211,13 @@ class snow:
                     if sysid in self.sysidLookup:
                         record[keyto] = self.sysidLookup[sysid]
                     else:
-                        response = self._connect(record[keyto]['link'])
-                        if response.status_code == 200:
-                            value = response.json()['result'][keyfrom]
-                            record[keyto] = value
-                            self.sysidLookup[sysid] = value
+                        if 'link' in record[keyto]:
+                            response = self._connect(record[keyto]['link'])
+                            if response.status_code == 200:
+                                try:
+                                    value = response.json()['result'][keyfrom]
+                                    record[keyto] = value
+                                    self.sysidLookup[sysid] = value
+                                except Exception as e:
+                                    pass
         return record

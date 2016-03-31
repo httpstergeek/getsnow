@@ -66,7 +66,7 @@ class snowNowCommand(GeneratingCommand):
     filters = Option(
         doc='''**Syntax:** **filters=***<str>*
         **Description:** list of key values where key and value are present. If no filters specified returns 1 event''',
-        require=True)
+        require=False)
 
     limit = Option(
         doc='''**Syntax:** **filters=***<str>*
@@ -76,7 +76,7 @@ class snowNowCommand(GeneratingCommand):
     daysAgo = Option(
         doc='''**Syntax:** **poolOnly=***<int>*
         **Description:** Filter for number of days to return.  Limit of event still 1000. Default None''',
-        require=True)
+        require=False)
 
     env = Option(
         doc='''**Syntax:** **env=***<str>*
@@ -98,7 +98,7 @@ class snowNowCommand(GeneratingCommand):
         table = self.table
         limit = self.limit
         bfilter = {}
-        filters = filters.split(',')
+        filters = filters.split(',') if filters else []
         exuded = []
         for x in filters:
             k, v = x.split('=')
@@ -113,7 +113,7 @@ class snowNowCommand(GeneratingCommand):
             exuded.append(snownow.filterbuilder(k, v))
         url = snownow.reqencode(exuded, table=table, timeby=daysBy, days=daysAgo)
         for record in snownow.getrecords(url, limit):
-            record = snownow.updaterecord(record, sourcetype='snow')
+            record = snownow.updaterecord(record, sourcetype='snow', lookup=True)
             record['_raw'] = util.tojson(record)
             yield record
 

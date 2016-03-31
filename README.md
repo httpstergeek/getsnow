@@ -15,8 +15,6 @@ query. The default is set to incidence table.
 
 click here for [Service Now Table API documentation]
 
-[Service Now Table API documentation]:http://wiki.servicenow.com/index.php?title=Table_API
-
 Get Service now is a Splunk Search command that uses the snow api  and retrieves raw json data.
 
 
