@@ -136,7 +136,8 @@ class snowIncidentCommand(GeneratingCommand):
         exuded2 = snowincident.filterbuilder('assignment_group', group_info)
         url = snowincident.reqencode([exuded1, exuded2], table='incident', active=active, timeby=daysBy, days=daysAgo)
         for record in snowincident.getrecords(url, limit=limit):
-            record = snowincident.updaterecord(record, sourcetype='snow:incident',lookup=False)
+            # record = snowincident.updaterecord(record, sourcetype='snow:incident',lookup=False)
+            record = snowincident.updatevalue(record, sourcetype='snow:incident')
             record['_raw'] = util.tojson(record)
             yield record
 

@@ -28,6 +28,7 @@ import requests
 import time
 import re
 import ast
+import json
 from datetime import datetime as dt
 from copy import copy as cp
 
@@ -220,4 +221,13 @@ class snow:
                                     self.sysidLookup[sysid] = value
                                 except Exception as e:
                                     pass
+        return record
+
+    def updatevalue(self, record, sourcetype='snow'):
+        for k, v in record.iteritems():
+            if isinstance(v, dict):
+                record[k] = v['value']
+        record['sourcetype'] = sourcetype
+        record['source'] = self.lasturl
+        record = self.updatetime(record, 'sys_created_on', '_time')
         return record

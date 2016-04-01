@@ -84,7 +84,8 @@ class snowOutageCommand(GeneratingCommand):
         snowuser.replacementsdict(value_replacements)
         url = snowuser.reqencode([],table='cmdb_ci_outage', days=daysAgo)
         for record in snowuser.getrecords(url):
-            record = snowuser.updaterecord(record, sourcetype='snow:outage')
+            #record = snowuser.updaterecord(record, sourcetype='snow:outage')
+            record = snowuser.updatevalue(record, sourcetype='snow:outage')
             record['_raw'] = util.tojson(record)
             yield record
 

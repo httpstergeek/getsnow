@@ -3,15 +3,7 @@ Copyright (C) 2006-2015 Zillow Group, Inc. All Rights Reserved.
 Get Service Now - A Splunk Search Command for Service Now
 =================
 
-Getsnow is a Splunk Search command that uses the snow (sevicenow) api to retrieves raw json data. This app differs from
-the Splunk Add-on for Service Now by allowing users to query any table, prebuilt or custom, by using filters.  A filter is
-any top level key in the json event such as active, assigned_to, category, etc. Additionally this support multiple
-service now environments.  Multiple environments may include poc, dev, or prod can access by creating additional stanza
-and adding the argument 'env=<environment>'.
-
-This command additional allows the user to request data from any service now table by adding 'table=<string>' to there
-
-query. The default is set to incidence table.
+Getsnow is a collection of Splunk Search command that uses the snow (sevicenow) api to retrieves raw json data. This app differs from the Splunk Add-on for Service Now by allowing users to query any table, prebuilt or custom, by using filters.  Multiple environments may include poc, dev, or prod can access by creating additional stanza and adding the argument 'env=<environment>'. To convert sys_id to correct values this app depends on the lookups from [Splunk_TA_snow].  Additionally this command can also be used to update lookup tables used.
 
 click here for [Service Now Table API documentation]
 
@@ -46,10 +38,13 @@ Prerequisites
 
 * Splunk version 6.x or Higher
 
+* [Splunk_TA_snow] 2.8.0
+
 You can download it [Splunk][splunk-download].  And see the [Splunk documentation][] for instructions on installing and more.
 [Splunk]:http://www.splunk.com
 [Splunk documentation]:http://docs.splunk.com/Documentation/Splunk/latest/User
 [splunk-download]:http://www.splunk.com/download
+[Splunk_TA_snow]:https://splunkbase.splunk.com/app/1928/
 
 
 Installation instructions
@@ -105,6 +100,8 @@ General query tool which allows users to query any table.
 *limit    - Maximium number of records in batches of 10,000
 *daysAgo  - How many days ago from now to retrieve records
 *env      - Environment to query. Environment must be in conf. Default production.
+
+Note:  To use this command use Browse *System Definition* Tab in Service Now
 
 snowoutage
 ---------

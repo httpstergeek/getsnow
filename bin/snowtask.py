@@ -122,7 +122,8 @@ class snowTaskCommand(GeneratingCommand):
         exuded2 = snowtask.filterbuilder('assignment_group', group_info)
         url = snowtask.reqencode([exuded1, exuded2], table='sc_task', active=active, days=daysAgo)
         for record in snowtask.getrecords(url, limit=limit):
-            record = snowtask.updaterecord(record, sourcetype='snow:task')
+            #record = snowtask.updaterecord(record, sourcetype='snow:task')
+            record = snowtask.updatevalue(record, sourcetype='snow:task')
             record['_raw'] = util.tojson(record)
             yield record
 

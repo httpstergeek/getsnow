@@ -113,7 +113,8 @@ class snowNowCommand(GeneratingCommand):
             exuded.append(snownow.filterbuilder(k, v))
         url = snownow.reqencode(exuded, table=table, timeby=daysBy, days=daysAgo)
         for record in snownow.getrecords(url, limit):
-            record = snownow.updaterecord(record, sourcetype='snow', lookup=True)
+            # record = snownow.updaterecord(record, sourcetype='snow', lookup=True)
+            record = snownow.updatevalue(record, sourcetype='snow')
             record['_raw'] = util.tojson(record)
             yield record
 
