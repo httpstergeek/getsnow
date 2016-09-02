@@ -61,12 +61,7 @@ def setup_logger(level):
 
 
 def getstanza(conf, stanza):
-    """
-    #Returns dict object of config file settings
-    #:param conf: Splunk conf file name
-    #:param stanza: stanza (entry) from conf file
-   #:return: returns dictionary of setting
-    """
+
     appdir = os.path.dirname(os.path.dirname(__file__))
     conf = "%s.conf" % conf
     apikeyconfpath = os.path.join(appdir, "default", conf)
