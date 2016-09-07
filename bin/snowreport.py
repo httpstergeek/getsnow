@@ -29,6 +29,7 @@ import util
 import sys
 from snowpy import snow
 from logging import INFO
+import json
 from splunklib.searchcommands import \
     dispatch, GeneratingCommand, Configuration, Option
 
@@ -86,6 +87,11 @@ class snowReportCommand(GeneratingCommand):
         **Description:** Environment to query. Environment must be in conf. Default production.''',
             require=False)
 
+    sysparm_fields =Option(
+        doc='''**Syntax:** **env=***<str>*
+        **Description:** Environment to query. Environment must be in conf. Default production.''',
+        require=False)
+
     def generate(self):
         env = self.env.lower() if self.env else 'production'
         conf = util.getstanza('getsnow', env)
@@ -93,16 +99,17 @@ class snowReportCommand(GeneratingCommand):
         username = conf['user']
         password = conf['password']
         report = self.report
+        sysparm_fields = self.sysparm_fields
+        sysparm_fields = '' if sysparm_fields == 'all' else '&sysparm_fields=assigned_to%2Cassignment_group%2Cbusiness_service%2Ccaller_id%2Ccategory%2Cclose_code%2Cclosed_at%2Cclosed_by%2Ccmdb_ci%2Ccontact_type%2Cnumber%2Copened_at%2Copened_by%2Cpriority%2Cresolved_at%2Cresolved_by%2Cseverity%2Cshort_description%2Cstate%2Csubcategory%2Cu_incident_duration%2Csys_created_on%2Cshort_description'
         url = conf['url']
         snowtask = snow(url, username, password)
         filter = 'rep_title={}'.format(report)
         url = snowtask.reqencode([filter], table='report_home_details')
-        result = snowtask.getrecords(url)
         for record in snowtask.getrecords(url):
             report_filter = record['rep_filter']
             url = snowtask.reqencode([report_filter], table='incident')
-            for record in snowtask.getrecords(url + "&sysparm_display_value=true"):
-                record['_raw'] = util.tojson(record)
+            for record in snowtask.getrecords(url + sysparm_fields):
+                record['_raw'] = json.dumps(record)
                 record = snowtask.updatetime(record, 'sys_created_on', '_time')
                 record = dictexpand(record)
                 yield record
