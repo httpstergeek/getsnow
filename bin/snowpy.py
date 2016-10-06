@@ -82,29 +82,6 @@ class snow:
             filterarg = ''
         return filterarg
 
-    def getsysid(self, table, key, values, mapto=None):
-        """
-        Retrieves sys_id from Service Now Table where key values match
-        :rtype: list
-        :param table: str - Service Now table
-        :param key: str - key in Service Now record to match values
-        :param values: list - values to match
-        :param mapto: string - key in lookup link to store for future lookups
-        :return:
-        """
-        sysid = []
-        user_records = []
-        if values:
-            exuded = self.filterbuilder(key, values)
-            query_string = self.reqencode([exuded], table=table)
-            for record in self.getrecords(query_string):
-                if record['sys_id']:
-                    if mapto:
-                        self.sysidLookup[record['sys_id']] = record[mapto]
-                    sysid.append(str(record['sys_id']))
-                    user_records.append(record)
-        return [sysid, user_records]
-
     def getrecords(self, url, username=None, password=None, limit=None):
         while url:
             response = self._connect(url)
@@ -139,7 +116,6 @@ class snow:
                             result['X-Total-Count'] = xcount
                         result['source'] = source
                         yield result
-
 
     def reqencode(self, filters, table='incident', timeby='sys_created_on', active=None, days=None, sysparm_limit=None):
         """
