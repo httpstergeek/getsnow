@@ -173,6 +173,7 @@ class snow:
         filters.append(active)
         filters = [x for x in filters if x]
         filters = '^'.join(filters)
+        print table
         sysparm_limit = '{}&'.format(sysparm_limit) if sysparm_limit else ''
         sysparm_query = self._query.format(self.url, table, sysparm_limit, filters)
         return sysparm_query

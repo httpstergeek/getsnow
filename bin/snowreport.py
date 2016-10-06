@@ -24,7 +24,6 @@ __maintainer__ = "Bernardo Macias"
 __email__ = 'bmacias@httpstergeek.com'
 __status__ = 'Production'
 
-
 import util
 import sys
 from snowpy import snow
@@ -50,8 +49,13 @@ def dictexpand(item, key=None):
             cdict = dictexpand(v, k)
             pdict = dict(pdict.items() + cdict.items())
         else:
-            v = str(v)
-            pdict[k] = v
+            if v:
+                v = str(v)
+                pdict[k] = v
+            else:
+                pdict[k] = "null"
+                pdict[k+'.display_value'] = "null"
+                pdict[k+'.link'] = "null"
     return pdict
 
 @Configuration(local=True, type='eventing', retainsevents=True, streaming=False)
@@ -100,18 +104,20 @@ class snowReportCommand(GeneratingCommand):
         password = conf['password']
         report = self.report
         sysparm_fields = self.sysparm_fields
-        sysparm_fields = '' if sysparm_fields == 'all' else '&sysparm_fields=assigned_to%2Cassignment_group%2Cbusiness_service%2Ccaller_id%2Ccategory%2Cclose_code%2Cclosed_at%2Cclosed_by%2Ccmdb_ci%2Ccontact_type%2Cnumber%2Copened_at%2Copened_by%2Cpriority%2Cresolved_at%2Cresolved_by%2Cseverity%2Cshort_description%2Cstate%2Csubcategory%2Cu_incident_duration%2Csys_created_on%2Cshort_description'
         url = conf['url']
         snowtask = snow(url, username, password)
         filter = 'rep_title={}'.format(report)
         url = snowtask.reqencode([filter], table='report_home_details')
-        for record in snowtask.getrecords(url):
-            report_filter = record['rep_filter']
-            url = snowtask.reqencode([report_filter], table='incident')
-            for record in snowtask.getrecords(url + sysparm_fields):
+        for report in snowtask.getrecords(url):
+            report_filter = report['rep_filter']
+            report_table = report['rep_table']
+            fields_list = report['rep_field_list'].split(',')
+            fields_list.append('sys_created_on')
+            sysparm_fields = '' if sysparm_fields else '%2C'.join(fields_list)
+            url = '{}/api/now/table/{}?sysparm_query={}&sysparm_display_value=true&sysparm_fields={}'.format(conf['url'], report_table, report_filter, sysparm_fields)
+            for record in snowtask.getrecords(url):
                 record['_raw'] = json.dumps(record)
                 record = snowtask.updatetime(record, 'sys_created_on', '_time')
                 record = dictexpand(record)
                 yield record
-
 dispatch(snowReportCommand, sys.argv, sys.stdin, sys.stdout, __name__)
