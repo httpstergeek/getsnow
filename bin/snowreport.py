@@ -16,14 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__author__ = 'Bernardo Macias '
-__credits__ = ['Bernardo Macias']
-__license__ = "ASF"
-__version__ = "2.0"
-__maintainer__ = "Bernardo Macias"
-__email__ = 'bmacias@httpstergeek.com'
-__status__ = 'Production'
-
 import util
 import sys
 from snowpy import snow
