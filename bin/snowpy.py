@@ -73,7 +73,6 @@ class snow:
     @staticmethod
     def filterbuilder(filter, filterarg):
         """
-
         :rtype: string
         """
         if filterarg:
