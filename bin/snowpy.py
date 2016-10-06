@@ -140,18 +140,6 @@ class snow:
                         result['source'] = source
                         yield result
 
-    def replacementsdict(self, lookupvalues):
-        """
-        Creates a dict from string e.i 'assigned_to=user_name, assignment_group=name' used by valuesreplace
-        :param lookupvalues:
-        :return:
-        """
-        lookupvalues = lookupvalues.split(',')
-        for lookupvalue in lookupvalues:
-            if '=' in lookupvalue:
-                k, v = lookupvalue.strip().split('=')
-                self.replacements[k] = v
-        return self.replacements
 
     def reqencode(self, filters, table='incident', timeby='sys_created_on', active=None, days=None, sysparm_limit=None):
         """
