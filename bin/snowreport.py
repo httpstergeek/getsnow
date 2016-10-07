@@ -22,30 +22,6 @@ from helpers import *
 from snowpy import *
 import json
 
-def dictexpand(item, key=None):
-    """
-    Flattens dictionary of dictionary using key from parent
-    :param item: dict object
-    :param key: key from parent
-    :return: dict
-    """
-    pdict = dict()
-    for k, v in item.iteritems():
-        if key:
-            k = "%s.%s" % (key, k)
-        if isinstance(v, dict):
-            cdict = dictexpand(v, k)
-            pdict = dict(pdict.items() + cdict.items())
-        else:
-            if v:
-                v = str(v)
-                pdict[k] = v
-            else:
-                pdict[k] = "null"
-                pdict[k+'.display_value'] = "null"
-                pdict[k+'.link'] = "null"
-    return pdict
-
 @Configuration()
 class snowReportCommand(GeneratingCommand):
 
