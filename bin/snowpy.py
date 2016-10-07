@@ -28,6 +28,8 @@ import requests
 import time
 import re
 import ast
+import json
+from urllib import quote_plus
 from datetime import datetime as dt
 from copy import copy as cp
 
@@ -40,7 +42,7 @@ class snow:
         self.username = username
         self.password = password
         self.lasturl = None
-        self._query = '{}/api/now/table/{}?{}sysparm_query={}'
+        self._api = '{}/api/now/table/{}?{}sysparm_query={}&sysparm_display_value=true{}'
         self.connect = self._connect
         self.replacements = {}
         self.sysidLookup = {}
@@ -72,38 +74,32 @@ class snow:
     @staticmethod
     def filterbuilder(filter, filterarg):
         """
-
         :rtype: string
         """
         if filterarg:
-            filterarg = [filter.strip() + '='+x.strip() for x in filterarg if x]
-            filterarg = '^OR'.join(filterarg).replace(' ', '%20')
+            filterarg = [filter.strip() + '=' + quote_plus(x) for x in filterarg if x]
+            filterarg = '^OR'.join(filterarg)
         else:
             filterarg = ''
         return filterarg
 
-    def getsysid(self, table, key, values, mapto=None):
+    def getsysid(self, table, key, values):
         """
         Retrieves sys_id from Service Now Table where key values match
         :rtype: list
         :param table: str - Service Now table
         :param key: str - key in Service Now record to match values
         :param values: list - values to match
-        :param mapto: string - key in lookup link to store for future lookups
         :return:
         """
         sysid = []
-        user_records = []
         if values:
-            exuded = self.filterbuilder(key, values)
-            query_string = self.reqencode([exuded], table=table)
+            filters = self.filterbuilder(key, values)
+            query_string = self.reqencode([filters], table)
             for record in self.getrecords(query_string):
                 if record['sys_id']:
-                    if mapto:
-                        self.sysidLookup[record['sys_id']] = record[mapto]
                     sysid.append(str(record['sys_id']))
-                    user_records.append(record)
-        return [sysid, user_records]
+        return sysid
 
     def getrecords(self, url, username=None, password=None, limit=None):
         while url:
@@ -140,20 +136,7 @@ class snow:
                         result['source'] = source
                         yield result
 
-    def replacementsdict(self, lookupvalues):
-        """
-        Creates a dict from string e.i 'assigned_to=user_name, assignment_group=name' used by valuesreplace
-        :param lookupvalues:
-        :return:
-        """
-        lookupvalues = lookupvalues.split(',')
-        for lookupvalue in lookupvalues:
-            if '=' in lookupvalue:
-                k, v = lookupvalue.strip().split('=')
-                self.replacements[k] = v
-        return self.replacements
-
-    def reqencode(self, filters, table='incident', timeby='sys_created_on', active=None, days=None, sysparm_limit=None):
+    def reqencode(self, sysparm_query, table=None, glide_system=None, active=None, sysparm_limit=None, sysparm_fields=None):
         """
         Creates Service Now api url
         :rtype: str
@@ -165,29 +148,25 @@ class snow:
         :param sysparm_limit: int
         :return:
         """
-        time_range = '{}>=javascript:gs.daysAgo({})'.format(timeby, days) if days else ''
+        query = [sysparm_query]
         active = 'active={}'.format(active).lower() if active else ''
-        sysparm_limit = str(sysparm_limit) if sysparm_limit else ''
-        filters.insert(0, time_range)
-        filters.append(active)
-        filters = [x for x in filters if x]
-        filters = '^'.join(filters)
-        sysparm_limit = '{}&'.format(sysparm_limit) if sysparm_limit else ''
-        sysparm_query = self._query.format(self.url, table, sysparm_limit, filters)
+        sysparm_limit = 'sysparm_limit={}&'.format(sysparm_limit) if sysparm_limit else ''
+        glide_system = glide_system if glide_system else ''
+        sysparm_fields = '&sysparm_fields={}'.format('%2C'.join(sysparm_fields)) if sysparm_fields else ''
+        query.insert(0, glide_system)
+        query.append(active)
+        query = [x for x in query if x]
+        sysparm_query = self._api.format(self.url, table, sysparm_limit, '^'.join(query), sysparm_fields)
         return sysparm_query
 
-    def updaterecord(self, record, sourcetype='snow',lookup=False):
+    def updaterecord(self, record, sourcetype='snow'):
         """
         Updates Service Now sys_id with value for record links, _time, source, and sourcetype
         :rtype: dict
         :param record: dict - single Service Now record
         :param sourcetype:  str - sourcetype for Splunk
-        :param lookup:  bool - lookup sysid disabled
         :return:
         """
-        if lookup:
-            for k, v in self.replacements.iteritems():
-                record = self.valuesreplace(record, k, v)
         record['sourcetype'] = sourcetype
         record['source'] = self.lasturl
         record = self.updatetime(record, 'sys_created_on', '_time')
@@ -221,3 +200,36 @@ class snow:
                                 except Exception as e:
                                     pass
         return record
+
+    def updatevalue(self, record, sourcetype='snow'):
+        #for k, v in record.iteritems():
+        #    if isinstance(v, dict):
+        #        record[k] = v['value']
+        record['sourcetype'] = sourcetype
+        record['source'] = self.lasturl
+        record = self.updatetime(record, 'sys_created_on', '_time')
+        return record
+
+def dictexpand(item, key=None):
+    """
+    Flattens dictionary of dictionary using key from parent
+    :param item: dict object
+    :param key: key from parent
+    :return: dict
+    """
+    pdict = dict()
+    for k, v in item.iteritems():
+        if key:
+            k = "%s.%s" % (key, k)
+        if isinstance(v, dict):
+            cdict = dictexpand(v, k)
+            pdict = dict(pdict.items() + cdict.items())
+        else:
+            if v:
+                v = str(v)
+                pdict[k] = v
+            else:
+                pdict[k] = "null"
+                pdict[k+'.display_value'] = "null"
+                pdict[k+'.link'] = "null"
+    return pdict
