@@ -29,6 +29,7 @@ import time
 import re
 import ast
 import json
+from urllib import quote_plus
 from datetime import datetime as dt
 from copy import copy as cp
 
@@ -41,7 +42,7 @@ class snow:
         self.username = username
         self.password = password
         self.lasturl = None
-        self._query = '{}/api/now/table/{}?{}sysparm_query={}'
+        self._api = '{}/api/now/table/{}?{}sysparm_query={}&sysparm_display_value=true'
         self.connect = self._connect
         self.replacements = {}
         self.sysidLookup = {}
@@ -76,11 +77,29 @@ class snow:
         :rtype: string
         """
         if filterarg:
-            filterarg = [filter.strip() + '='+x.strip() for x in filterarg if x]
-            filterarg = '^OR'.join(filterarg).replace(' ', '%20')
+            filterarg = [filter.strip() + '=' + quote_plus(x) for x in filterarg if x]
+            filterarg = '^OR'.join(filterarg)
         else:
             filterarg = ''
         return filterarg
+
+    def getsysid(self, table, key, values):
+        """
+        Retrieves sys_id from Service Now Table where key values match
+        :rtype: list
+        :param table: str - Service Now table
+        :param key: str - key in Service Now record to match values
+        :param values: list - values to match
+        :return:
+        """
+        sysid = []
+        if values:
+            filters = self.filterbuilder(key, values)
+            query_string = self.reqencode([filters], table)
+            for record in self.getrecords(query_string):
+                if record['sys_id']:
+                    sysid.append(str(record['sys_id']))
+        return sysid
 
     def getrecords(self, url, username=None, password=None, limit=None):
         while url:
@@ -117,7 +136,7 @@ class snow:
                         result['source'] = source
                         yield result
 
-    def reqencode(self, filters, table='incident', timeby='sys_created_on', active=None, days=None, sysparm_limit=None):
+    def reqencode(self, filters, table=None, glide_system=None, active=None, sysparm_limit=None):
         """
         Creates Service Now api url
         :rtype: str
@@ -129,30 +148,24 @@ class snow:
         :param sysparm_limit: int
         :return:
         """
-        time_range = '{}>=javascript:gs.daysAgo({})'.format(timeby, days) if days else ''
         active = 'active={}'.format(active).lower() if active else ''
-        sysparm_limit = str(sysparm_limit) if sysparm_limit else ''
-        filters.insert(0, time_range)
+        sysparm_limit = 'sysparm_limit={}&'.format(sysparm_limit) if sysparm_limit else ''
+        glide_system = glide_system if glide_system else ''
+        filters.insert(0, glide_system)
         filters.append(active)
         filters = [x for x in filters if x]
         filters = '^'.join(filters)
-        print table
-        sysparm_limit = '{}&'.format(sysparm_limit) if sysparm_limit else ''
-        sysparm_query = self._query.format(self.url, table, sysparm_limit, filters)
+        sysparm_query = self._api.format(self.url, table, sysparm_limit, filters)
         return sysparm_query
 
-    def updaterecord(self, record, sourcetype='snow',lookup=False):
+    def updaterecord(self, record, sourcetype='snow'):
         """
         Updates Service Now sys_id with value for record links, _time, source, and sourcetype
         :rtype: dict
         :param record: dict - single Service Now record
         :param sourcetype:  str - sourcetype for Splunk
-        :param lookup:  bool - lookup sysid disabled
         :return:
         """
-        if lookup:
-            for k, v in self.replacements.iteritems():
-                record = self.valuesreplace(record, k, v)
         record['sourcetype'] = sourcetype
         record['source'] = self.lasturl
         record = self.updatetime(record, 'sys_created_on', '_time')
@@ -188,10 +201,34 @@ class snow:
         return record
 
     def updatevalue(self, record, sourcetype='snow'):
-        for k, v in record.iteritems():
-            if isinstance(v, dict):
-                record[k] = v['value']
+        #for k, v in record.iteritems():
+        #    if isinstance(v, dict):
+        #        record[k] = v['value']
         record['sourcetype'] = sourcetype
         record['source'] = self.lasturl
         record = self.updatetime(record, 'sys_created_on', '_time')
         return record
+
+def dictexpand(item, key=None):
+    """
+    Flattens dictionary of dictionary using key from parent
+    :param item: dict object
+    :param key: key from parent
+    :return: dict
+    """
+    pdict = dict()
+    for k, v in item.iteritems():
+        if key:
+            k = "%s.%s" % (key, k)
+        if isinstance(v, dict):
+            cdict = dictexpand(v, k)
+            pdict = dict(pdict.items() + cdict.items())
+        else:
+            if v:
+                v = str(v)
+                pdict[k] = v
+            else:
+                pdict[k] = "null"
+                pdict[k+'.display_value'] = "null"
+                pdict[k+'.link'] = "null"
+    return pdict
