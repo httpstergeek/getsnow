@@ -44,8 +44,6 @@ class snow:
         self.lasturl = None
         self._api = '{}/api/now/table/{}?{}sysparm_query={}&sysparm_display_value=true{}'
         self.connect = self._connect
-        self.replacements = {}
-        self.sysidLookup = {}
 
     def _connect(self, url, username=None, password=None):
         """
@@ -66,6 +64,13 @@ class snow:
 
     @staticmethod
     def updatetime(record, field, destfield=None):
+        """
+        :rtype dict:
+        :param record:
+        :param field:
+        :param destfield:
+        :return:
+        """
         if destfield:
             timeobject = dt.strptime(record[field],"%Y-%m-%d %H:%M:%S").timetuple()
             record[destfield] = time.mktime(timeobject) if field in record else ''
@@ -74,7 +79,10 @@ class snow:
     @staticmethod
     def filterbuilder(filter, filterarg):
         """
-        :rtype: string
+        :rtype: string:
+        :param filter:
+        :param filterarg:
+        :return:
         """
         if filterarg:
             filterarg = [filter.strip() + '=' + quote_plus(x) for x in filterarg if x]
@@ -86,7 +94,7 @@ class snow:
     def getsysid(self, table, key, values):
         """
         Retrieves sys_id from Service Now Table where key values match
-        :rtype: list
+        :rtype list:
         :param table: str - Service Now table
         :param key: str - key in Service Now record to match values
         :param values: list - values to match
@@ -101,7 +109,12 @@ class snow:
                     sysid.append(str(record['sys_id']))
         return sysid
 
-    def getrecords(self, url, username=None, password=None, limit=None):
+    def getrecords(self, url, limit=None):
+        """
+        :param url: string
+        :param limit: int
+        :return:
+        """
         while url:
             response = self._connect(url)
             headers = response.headers
@@ -140,12 +153,12 @@ class snow:
         """
         Creates Service Now api url
         :rtype: str
-        :param filters: list
+        :param filters: string
         :param table: string
-        :param timeby: string
+        :param glide_system: string
         :param active: boolean
-        :param days: int
         :param sysparm_limit: int
+        :param sysparm_fields: list
         :return:
         """
         query = [sysparm_query]
@@ -170,35 +183,6 @@ class snow:
         record['sourcetype'] = sourcetype
         record['source'] = self.lasturl
         record = self.updatetime(record, 'sys_created_on', '_time')
-        return record
-
-    def valuesreplace(self, record, keyto, keyfrom):
-        """
-        Retrieves lookup link and replaces sys_id with value from lookup link.
-        :rtype: dict
-        :param record: dict - single Service Now record
-        :param keyfrom: str - sys_id link lookup key
-        :param keyto: str - key in Service Now record containing link
-        :return:
-        """
-        if keyto in record:
-            if 'value' in record[keyto]:
-                sysid = record[keyto]['value']
-                if sysid == 'system':
-                    record[keyto] = 'system'
-                else:
-                    if sysid in self.sysidLookup:
-                        record[keyto] = self.sysidLookup[sysid]
-                    else:
-                        if 'link' in record[keyto]:
-                            response = self._connect(record[keyto]['link'])
-                            if response.status_code == 200:
-                                try:
-                                    value = response.json()['result'][keyfrom]
-                                    record[keyto] = value
-                                    self.sysidLookup[sysid] = value
-                                except Exception as e:
-                                    pass
         return record
 
     def updatevalue(self, record, sourcetype='snow'):
