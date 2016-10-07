@@ -24,87 +24,49 @@ __maintainer__ = "Bernardo Macias"
 __email__ = 'bmacias@httpstergeek.com'
 __status__ = 'Production'
 
-import util
+from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
 import sys
-from snowpy import snow
-from logging import INFO
-from splunklib.searchcommands import \
-    dispatch, GeneratingCommand, Configuration, Option
-
-
-logger = util.setup_logger(INFO)
+from helpers import *
+from snowpy import *
+import json
 
 @Configuration(local=True)
 class snowUserCommand(GeneratingCommand):
-    """ %(synopsis)
 
-    ##Syntax
-    .. code-block::
-    snowuser env=<str> user_name=<str> daysAgo=<int> env=<str>
-
-    ##Description
-
-    Returns json events for Service Now API from tables.  Limit 1000 events.
-
-    ##Example
-
-    Return json events where where active is true and contact_type is phone for the past 30 days.
-
-    .. code-block::
-        | snowuser user_name=rick daysAgo=30
-        OR
-        | snowuser env=production user_name=mortey
-        OR
-        | snowuser env=production user_name="mortey,rick"
-
-    """
-
-    user_name = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** User''',
-            require=True)
-
-    daysAgo = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** How many days ago to retrieve incidents''',
-            require=False)
-
-    env = Option(
-            doc='''**Syntax:** **env=***<str>*
-        **Description:** Environment to query. Environment must be in conf. Default production.''',
-            require=False)
+    user_name = Option(require=True, validate=validators.List())
+    daysAgo = Option(require=False, validate=validators.Integer(0))
+    env = Option(require=False)
 
     def generate(self):
-        logger = util.setup_logger(INFO)
+        self.logger.debug('snowuser: %s', self)
+        searchinfo = self.metadata.searchinfo
+        app = AppConf(searchinfo.splunkd_uri, searchinfo.session_key)
         env = self.env.lower() if self.env else 'production'
-        conf = util.getstanza('getsnow', env)
-        # Proxy not currently used in this version
-        # proxy_conf = util.getstanza('getsnow', 'global')
-        # proxies = util.setproxy(conf, proxy_conf)
-        username = conf['user']
-        password = conf['password']
-        url = conf['url']
-        value_replacements = conf['value_replacements']
-        user_name = self.user_name.split(',')
-        daysAgo = int(self.daysAgo) if self.daysAgo else 30
-        snowuser = snow(url, username, password)
-        snowuser.replacementsdict(value_replacements)
-        user_info = snowuser.getsysid('sys_user', 'user_name', user_name, mapto='user_name')
-        for record in user_info[1]:
-            record = snowuser.updaterecord(record, sourcetype='snow:user')
-            record['_raw'] = util.tojson(record)
+        conf = app.get_config('getsnow')[env]
+        snowuser = snow(conf['url'], conf['user'], conf['password'])
+        filters = snowuser.filterbuilder('user_name', self.user_name)
+        query_string = snowuser.reqencode(filters, 'sys_user')
+        user_sid = []
+        for record in snowuser.getrecords(query_string):
+            user_sid.append(record['sys_id'])
+            record = snowuser.updatevalue(record, sourcetype='snow:user')
+            record['_raw'] = json.dumps(record)
+            record = dictexpand(record)
             yield record
-        exuded = snowuser.filterbuilder('assigned_to', user_info[0])
-        url = snowuser.reqencode([exuded], table='alm_asset')
+        filters = snowuser.filterbuilder('assigned_to', user_sid)
+        url = snowuser.reqencode(filters, table='alm_asset')
         for record in snowuser.getrecords(url):
-            record = snowuser.updaterecord(record, sourcetype='snow:asset')
-            record['_raw'] = util.tojson(record)
+            record = snowuser.updatevalue(record, sourcetype='snow:asset')
+            record['_raw'] = json.dumps(record)
+            record = dictexpand(record)
             yield record
-        exuded = snowuser.filterbuilder('opened_by', user_info[0])
-        url = snowuser.reqencode([exuded], days=daysAgo)
+        filters = snowuser.filterbuilder('opened_by', user_sid)
+        glide = 'sys_created_on>=javascript:gs.daysAgo({})'.format(self.daysAgo) if self.daysAgo else ''
+        url = snowuser.reqencode(filters, table='incident', glide_system=glide)
         for record in snowuser.getrecords(url):
-            record = snowuser.updaterecord(record, sourcetype='snow:incident')
-            record['_raw'] = util.tojson(record)
+            record = snowuser.updatevalue(record, sourcetype='snow:incident')
+            record['_raw'] = json.dumps(record)
+            record = dictexpand(record)
             yield record
 
 dispatch(snowUserCommand, sys.argv, sys.stdin, sys.stdout, __name__)

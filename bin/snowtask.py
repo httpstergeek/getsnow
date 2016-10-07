@@ -25,106 +25,39 @@ __email__ = 'bmacias@httpstergeek.com'
 __status__ = 'Production'
 
 
-import util
+from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
 import sys
-import ast
-from snowpy import snow
-from logging import INFO
-from splunklib.searchcommands import \
-    dispatch, GeneratingCommand, Configuration, Option
+from helpers import *
+from snowpy import *
+import json
 
-logger = util.setup_logger(INFO)
-
-
-@Configuration(local=True, type='eventing', retainsevents=True, streaming=False)
+@Configuration()
 class snowTaskCommand(GeneratingCommand):
-    """ %(synopsis)
 
-    ##Syntax
-    .. code-block::
-    getuser env=<str> user_name=<str> daysAgo=<int> env=<str>
-
-    ##Description
-
-    Returns json events for Service Now API from tables.  Limit 1000 events.
-
-    ##Example
-
-    Return json events where where active is true and contact_type is phone for the past 30 days.
-
-    .. code-block::
-        | getsnow user_name=rick daysAgo=30
-        OR
-        | getsnow env=production user_name=mortey
-
-    """
-
-    user_name = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** User to filterby''',
-            require=False)
-
-    assignment_group = Option(
-            doc='''**Syntax:** **assignment_group=***<str>*
-        **Description:** Assignment group in Service Now''',
-            require=False)
-
-    daysAgo = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** How many days ago to retrieve incidents''',
-            require=False)
-
-    active = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** Boolean True/False.  If record is active. Default None which will pull both''',
-            require=False)
-
-    limit = Option(
-            doc='''**Syntax:** **table=***<str>*
-        **Description:** Maximium number of records in batches of 10,000''',
-            require=False)
-
-    env = Option(
-            doc='''**Syntax:** **env=***<str>*
-        **Description:** Environment to query. Environment must be in conf. Default production.''',
-            require=False)
+    assigned = Option(require=True, validate=validators.List())
+    assigned_by = Option(require=False)
+    daysAgo = Option(require=False, validate=validators.Integer(0))
+    active = Option(require=True, validate=validators.Boolean())
+    limit = Option(require=False, validate=validators.Integer(0))
+    env = Option(require=False)
 
     def generate(self):
+        searchinfo = self.metadata.searchinfo
+        app = AppConf(searchinfo.splunkd_uri, searchinfo.session_key)
         env = self.env.lower() if self.env else 'production'
-        conf = util.getstanza('getsnow', env)
-        #proxy_conf = util.getstanza('getsnow', 'global')
-        username = conf['user']
-        password = conf['password']
-        active = self.active if self.active else 'true'
-        user_name = self.user_name.split(',') if self.user_name else []
-        assigment_group = self.assignment_group.split(',') if self.assignment_group else []
-        daysAgo = int(self.daysAgo) if self.daysAgo else None
-        limit = self.limit
-        url = conf['url']
-        value_replacements = conf['value_replacements']
-        if active:
-            try:
-                active = active.strip()
-                active = active[0].upper() + active[1:].lower()
-                active = ast.literal_eval(active)
-            except:
-                active = True
-        if limit:
-            try:
-                limit = int(limit)
-            except:
-                limit = 10000
-        snowtask = snow(url, username, password)
-        snowtask.replacementsdict(value_replacements)
-        user_info = snowtask.getsysid('sys_user', 'user_name', user_name, mapto='user_name')[0]
-        group_info = snowtask.getsysid('sys_user_group', 'name', assigment_group, mapto='name')[0]
-        exuded1 = snowtask.filterbuilder('assigned_to', user_info)
-        exuded2 = snowtask.filterbuilder('assignment_group', group_info)
-        url = snowtask.reqencode([exuded1, exuded2], table='sc_task', active=active, days=daysAgo)
-        for record in snowtask.getrecords(url, limit=limit):
-            #record = snowtask.updaterecord(record, sourcetype='snow:task')
-            record = snowtask.updatevalue(record, sourcetype='snow:task')
-            record['_raw'] = util.tojson(record)
+        conf = app.get_config('getsnow')[env]
+        assigned_by = 'assignment_group' if self.assigned_by == 'group' else 'assigned_to'
+        assignment = {'table': 'sys_user_group', 'field': 'name'} if self.assigned_by == 'group' else {'table': 'sys_user', 'field': 'user_name'}
+        limit = self.limit if self.limit else 10000
+        snowtask = snow(conf['url'], conf['user'], conf['password'])
+        sids = snowtask.getsysid(assignment['table'], assignment['field'], self.assigned)
+        filters = snowtask.filterbuilder(assigned_by, sids)
+        glide = 'sys_created_on>=javascript:gs.daysAgo({})'.format(self.daysAgo) if self.daysAgo else ''
+        url = snowtask.reqencode(filters, table='sc_task', glide_system=glide, active=self.active, sysparm_limit=limit)
+        for record in snowtask.getrecords(url):
+            record = snowtask.updaterecord(record, sourcetype='snow:task')
+            record['_raw'] = json.dumps(record)
+            record = dictexpand(record)
             yield record
 
 dispatch(snowTaskCommand, sys.argv, sys.stdin, sys.stdout, __name__)

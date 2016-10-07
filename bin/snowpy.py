@@ -42,7 +42,7 @@ class snow:
         self.username = username
         self.password = password
         self.lasturl = None
-        self._api = '{}/api/now/table/{}?{}sysparm_query={}&sysparm_display_value=true'
+        self._api = '{}/api/now/table/{}?{}sysparm_query={}&sysparm_display_value=true{}'
         self.connect = self._connect
         self.replacements = {}
         self.sysidLookup = {}
@@ -136,7 +136,7 @@ class snow:
                         result['source'] = source
                         yield result
 
-    def reqencode(self, filters, table=None, glide_system=None, active=None, sysparm_limit=None):
+    def reqencode(self, sysparm_query, table=None, glide_system=None, active=None, sysparm_limit=None, sysparm_fields=None):
         """
         Creates Service Now api url
         :rtype: str
@@ -148,14 +148,15 @@ class snow:
         :param sysparm_limit: int
         :return:
         """
+        query = [sysparm_query]
         active = 'active={}'.format(active).lower() if active else ''
         sysparm_limit = 'sysparm_limit={}&'.format(sysparm_limit) if sysparm_limit else ''
         glide_system = glide_system if glide_system else ''
-        filters.insert(0, glide_system)
-        filters.append(active)
-        filters = [x for x in filters if x]
-        filters = '^'.join(filters)
-        sysparm_query = self._api.format(self.url, table, sysparm_limit, filters)
+        sysparm_fields = '&sysparm_fields={}'.format('%2C'.join(sysparm_fields)) if sysparm_fields else ''
+        query.insert(0, glide_system)
+        query.append(active)
+        query = [x for x in query if x]
+        sysparm_query = self._api.format(self.url, table, sysparm_limit, '^'.join(query), sysparm_fields)
         return sysparm_query
 
     def updaterecord(self, record, sourcetype='snow'):
