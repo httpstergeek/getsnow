@@ -2,7 +2,7 @@
 # Author: Bernardo Macias <bmacias@httpstergeek.com>
 #
 #
-# All rights reserved
+# All rights reserved © 2011-2016 Zillow Group, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,15 +16,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__author__ = 'Bernardo Macias '
-__credits__ = ['Bernardo Macias']
-__license__ = "ASF"
-__version__ = "2.0"
-__maintainer__ = "Bernardo Macias"
-__email__ = 'bmacias@httpstergeek.com'
-__status__ = 'Production'
+from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
+import sys
+from helpers import *
+from snowpy import *
+import time
+import json
+import requests
+
+@Configuration()
+class snowIncidentCommand(GeneratingCommand):
+
+    assigned = Option(require=True, validate=validators.List())
+    assigned_by = Option(require=False)
+    daysAgo = Option(require=False, validate=validators.Integer(0))
+    daysBy = Option(require=False)
+    active = Option(require=True, validate=validators.Boolean())
+    limit = Option(require=False, validate=validators.Integer(0))
+    env = Option(require=False)
+
+    def generate(self):
+        self.logger.debug('snowIncidentCommand: %s', self)
+        searchinfo = self.metadata.searchinfo
+        app = AppConf(searchinfo.splunkd_uri, searchinfo.session_key)
+        env = self.env.lower() if self.env else 'production'
+        conf = app.get_config('getsnow')[env]
+        username = conf['user']
+        password = conf['password']
+        url = conf['url']
+        assigned_by = 'assignment_group' if self.assigned_by == 'group' else 'assigned_to'
+        assignment = {'table': 'sys_user_group', 'field': 'name'} if self.assigned_by == 'group' else {'table': 'sys_user', 'field': 'user_name'}
+        daysAgo = int(self.daysAgo) if self.daysAgo else None
+        limit = self.limit if self.limit else 10000
+        snowincident = snow(url, username, password)
+        sids = snowincident.getsysid(assignment['table'], assignment['field'], self.assigned)
+        filters = snowincident.filterbuilder(assigned_by, sids)
+        glide = 'sys_created_on>=javascript:gs.daysAgo({})'.format(self.daysAgo)
+        url = snowincident.reqencode([filters], table='incident', glide_system=glide, active=self.active, sysparm_limit=limit)
+        for record in snowincident.getrecords(url):
+            record = snowincident.updatevalue(record, sourcetype='snow:incident')
+            record['_raw'] = json.dumps(record)
+            record = dictexpand(record)
+            yield record
 
 
+dispatch(snowIncidentCommand, sys.argv, sys.stdin, sys.stdout, __name__)
+"""
 import util
 import sys
 import ast
@@ -39,11 +76,11 @@ logger = util.setup_logger(INFO)
 
 @Configuration(local=True, type='eventing', retainsevents=True, streaming=False)
 class snowIncidentCommand(GeneratingCommand):
-    """ %(synopsis)
+    "" " %(synopsis)
 
     ##Syntax
     .. code-block::
-    getuser env=<str> user_name=<str> daysAgo=<int> env=<str>
+    ggetuseretuser env=<str> user_name=<str> daysAgo=<int> env=<str>
 
     ##Description
 
@@ -58,7 +95,7 @@ class snowIncidentCommand(GeneratingCommand):
         OR
         | getsnow env=production user_name=mortey
 
-    """
+    "" "
 
     user_name = Option(
             doc='''**Syntax:** **table=***<str>*
@@ -142,3 +179,4 @@ class snowIncidentCommand(GeneratingCommand):
             yield record
 
 dispatch(snowIncidentCommand, sys.argv, sys.stdin, sys.stdout, __name__)
+"""
