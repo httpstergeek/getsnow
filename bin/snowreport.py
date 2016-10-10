@@ -29,8 +29,8 @@ class snowReportCommand(GeneratingCommand):
     env = Option(require=False)
 
     def generate(self):
-        self.logger.debug('snowReport: %s', self)
         searchinfo = self.metadata.searchinfo
+        self.logger.debug(' excuted by username="%s" %s', searchinfo.username, ' '.join(searchinfo.args))
         app = AppConf(searchinfo.splunkd_uri, searchinfo.session_key)
         env = self.env.lower() if self.env else 'production'
         conf = app.get_config('getsnow')[env]
