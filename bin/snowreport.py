@@ -22,7 +22,7 @@ from helpers import *
 from snowpy import *
 import json
 
-@Configuration()
+@Configuration(local=True)
 class snowReportCommand(GeneratingCommand):
 
     report = Option(require=True)

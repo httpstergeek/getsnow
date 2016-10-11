@@ -31,7 +31,7 @@ from helpers import *
 from snowpy import *
 import json
 
-@Configuration()
+@Configuration(local=True)
 class snowTaskCommand(GeneratingCommand):
 
     assigned = Option(require=True, validate=validators.List())
