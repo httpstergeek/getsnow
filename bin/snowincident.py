@@ -22,7 +22,7 @@ from helpers import *
 from snowpy import *
 import json
 
-@Configuration(local=True)
+@Configuration(local=True, type='eventing', retainsevents=True, streaming=False)
 class snowIncidentCommand(GeneratingCommand):
 
     assigned = Option(require=True, validate=validators.List())
