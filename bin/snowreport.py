@@ -21,6 +21,7 @@ import sys
 from helpers import *
 from snowpy import *
 import json
+import urllib
 
 @Configuration(local=True, type='eventing', retainsevents=True, streaming=False)
 class snowReportCommand(GeneratingCommand):
@@ -39,7 +40,7 @@ class snowReportCommand(GeneratingCommand):
         for report in snowreport.getrecords(url):
             fields_list = report['rep_field_list'].split(',')
             fields_list.append('sys_created_on')
-            url = snowreport.reqencode(report['rep_filter'], table=report['rep_table'], sysparm_fields=fields_list)
+            url = snowreport.reqencode(urllib.quote_plus(report['rep_filter']), table=report['rep_table'], sysparm_fields=fields_list)
             for record in snowreport.getrecords(url):
                 record = snowreport.updaterecord(record, sourcetype='snow:report')
                 record['_raw'] = json.dumps(record)
