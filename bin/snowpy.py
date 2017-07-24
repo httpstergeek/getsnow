@@ -71,7 +71,7 @@ class snow:
         :return:
         """
         if destfield:
-            timeobject = dt.strptime(record[field],"%Y-%m-%d %H:%M:%S").timetuple()
+            timeobject = dt.strptime(record[field], "%Y-%m-%d %H:%M:%S").timetuple()
             record[destfield] = time.mktime(timeobject) if field in record else ''
         return record
 
@@ -185,13 +185,11 @@ class snow:
         return record
 
     def updatevalue(self, record, sourcetype='snow'):
-        #for k, v in record.iteritems():
-        #    if isinstance(v, dict):
-        #        record[k] = v['value']
         record['sourcetype'] = sourcetype
         record['source'] = self.lasturl
         record = self.updatetime(record, 'sys_created_on', '_time')
         return record
+
 
 def dictexpand(item, key=None):
     """
@@ -213,6 +211,6 @@ def dictexpand(item, key=None):
                 pdict[k] = v
             else:
                 pdict[k] = "null"
-                pdict[k+'.display_value'] = "null"
-                pdict[k+'.link'] = "null"
+                pdict[k + '.display_value'] = "null"
+                pdict[k + '.link'] = "null"
     return pdict
